@@ -2,9 +2,10 @@
   "name": "proyecto_identificacion_imagenes",
   "version": "1.0.0",
   "description": "Monolito para etiquetado y anotación de imágenes con soporte de exportación en formato COCO.",
-  "main": "index.js",
   "type": "module",
   "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -14,7 +15,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/JGO-07/Proyecto_Identificacion_imagenes/issues"
   },

@@ -1,13 +1,5 @@
-import {
-  mysqlTable,
-  int,
-  varchar,
-  text,
-  datetime,
-  tinyint,
-  double,
-} from 'drizzle-orm/mysql-core';
 import { sql } from 'drizzle-orm';
+import { datetime, double, int, mysqlTable, text, tinyint, varchar } from 'drizzle-orm/mysql-core';
 
 // Tabla de Categorías
 export const categories = mysqlTable('categories', {
@@ -29,7 +21,9 @@ export const images = mysqlTable('images', {
   height: int('height').notNull(),
   status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending' | 'in_progress' | 'completed'
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
 });
 
 // Tabla de Anotaciones (Bounding Boxes)
@@ -49,5 +43,7 @@ export const annotations = mysqlTable('annotations', {
   area: double('area').notNull(),
   isCrowd: tinyint('is_crowd').notNull().default(0), // 0 o 1
   createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
 });

@@ -1,0 +1,33 @@
+{
+  "name": "proyecto_identificacion_imagenes",
+  "version": "1.0.0",
+  "description": "Monolito para etiquetado y anotación de imágenes con soporte de exportación en formato COCO.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JGO-07/Proyecto_Identificacion_imagenes.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/JGO-07/Proyecto_Identificacion_imagenes/issues"
+  },
+  "homepage": "https://github.com/JGO-07/Proyecto_Identificacion_imagenes#readme",
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "drizzle-kit": "^0.31.10",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "minio": "^8.0.7",
+    "mysql2": "^3.24.2"
+  }
+}

@@ -122,6 +122,14 @@ dist
 # TernJS port file
 .tern-port
 
+# OS / binary temporales
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+*.temp
+*.swap
+
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 

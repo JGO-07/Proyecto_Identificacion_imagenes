@@ -59,6 +59,10 @@ respuesta externa antes de entregarla a los componentes.
 
 ## 3. Necesidades por pantalla
 
+El cliente validado para los endpoints marcados como disponibles está implementado
+en `src/client/lib/api-client.ts`. Su activación en las pantallas espera una prueba de
+integración con la infraestructura real para evitar un modo parcialmente persistente.
+
 | Pantalla | Operación | Endpoint | Estado |
 | :------- | :-------- | :------- | :----- |
 | Bandeja | listar imágenes | `GET /api/images?limit=&offset=` | Disponible |

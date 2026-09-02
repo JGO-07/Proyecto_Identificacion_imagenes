@@ -1,7 +1,11 @@
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  // Evita bloqueos de OneDrive sobre node_modules/.vite durante la optimización.
+  cacheDir: join(tmpdir(), 'proyecto-identificacion-imagenes-vite'),
   plugins: [react()],
   server: {
     host: '127.0.0.1',

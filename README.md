@@ -74,6 +74,16 @@ npm run db:seed          # (Fase 1) carga categorías e imágenes de ejemplo (id
 > En Fase 0 las pantallas y el canvas usan datos simulados identificados en la UI.
 > La carga multipart y la persistencia de anotaciones se conectan en Fase 1.
 
+### Avance de Fase 1 — Rol 3
+
+La rama de Fase 1 ya incluye creación, movimiento y redimensionamiento de cajas en
+memoria, selección de categoría, validación compartida de archivos y un cliente HTTP
+con respuestas validadas mediante Zod. La persistencia permanece desactivada hasta
+que se cierre el contrato multipart y la visualización de objetos MinIO con Rol 2.
+
+Consulta [`docs/frontend-phase-1-status.md`](docs/frontend-phase-1-status.md) para
+ver la evidencia, las pruebas y los puntos de integración pendientes.
+
 ## Estructura del proyecto
 
 ```

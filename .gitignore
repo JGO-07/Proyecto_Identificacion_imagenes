@@ -70,6 +70,9 @@ web_modules/
 .env.*
 !.env.example
 
+# Cache local de imágenes descargadas por el seeder (no versionar binarios)
+data/dataset-src/
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

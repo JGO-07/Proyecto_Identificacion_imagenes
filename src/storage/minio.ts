@@ -1,14 +1,28 @@
-import dotenv from 'dotenv';
 import { Client } from 'minio';
+import { env } from '../lib/env.js';
 
-dotenv.config();
-
+/**
+ * Cliente oficial de MinIO. Los datos de conexión provienen de `.env`
+ * centralizados en `env` (igual que la conexión a MariaDB).
+ */
 export const minioClient = new Client({
-  endPoint: process.env.MINIO_ENDPOINT || 'localhost',
-  port: Number.parseInt(process.env.MINIO_PORT || '9000', 10),
-  useSSL: process.env.MINIO_USE_SSL === 'true',
-  accessKey: process.env.MINIO_ROOT_USER || 'minio_admin',
-  secretKey: process.env.MINIO_ROOT_PASSWORD || 'minio_secure_password',
+  endPoint: env.MINIO_ENDPOINT,
+  port: env.MINIO_PORT,
+  useSSL: env.MINIO_USE_SSL,
+  accessKey: env.MINIO_ROOT_USER,
+  secretKey: env.MINIO_ROOT_PASSWORD,
 });
 
-export const BUCKET_NAME = process.env.MINIO_BUCKET_NAME || 'annotation-images';
+export const BUCKET_NAME = env.MINIO_BUCKET_NAME;
+
+/**
+ * Garantiza que el bucket exista. Si no, lo crea. Pensado para ejecutarse
+ * al arrancar (o en el seeder) para que la app nunca asuma un bucket ya creado.
+ */
+export async function ensureBucket(): Promise<void> {
+  const exists = await minioClient.bucketExists(BUCKET_NAME);
+  if (!exists) {
+    await minioClient.makeBucket(BUCKET_NAME);
+    console.log(`Bucket "${BUCKET_NAME}" creado.`);
+  }
+}

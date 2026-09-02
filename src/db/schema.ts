@@ -1,5 +1,15 @@
 import { sql } from 'drizzle-orm';
-import { datetime, double, int, mysqlTable, text, tinyint, varchar } from 'drizzle-orm/mysql-core';
+import {
+  datetime,
+  double,
+  index,
+  int,
+  mysqlTable,
+  text,
+  tinyint,
+  uniqueIndex,
+  varchar,
+} from 'drizzle-orm/mysql-core';
 
 // Tabla de Categorías
 export const categories = mysqlTable('categories', {
@@ -10,40 +20,55 @@ export const categories = mysqlTable('categories', {
 });
 
 // Tabla de Imágenes
-export const images = mysqlTable('images', {
-  id: int('id').autoincrement().primaryKey(),
-  fileName: varchar('file_name', { length: 255 }).notNull(),
-  originalName: varchar('original_name', { length: 255 }).notNull(),
-  storagePath: text('storage_path').notNull(), // Path/Key en MinIO
-  mimeType: varchar('mime_type', { length: 50 }).notNull(),
-  sizeBytes: int('size_bytes').notNull(),
-  width: int('width').notNull(),
-  height: int('height').notNull(),
-  status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending' | 'in_progress' | 'completed'
-  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: datetime('updated_at')
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
-});
+export const images = mysqlTable(
+  'images',
+  {
+    id: int('id').autoincrement().primaryKey(),
+    fileName: varchar('file_name', { length: 255 }).notNull(),
+    originalName: varchar('original_name', { length: 255 }).notNull(),
+    storagePath: text('storage_path').notNull(), // Path/Key en MinIO
+    mimeType: varchar('mime_type', { length: 50 }).notNull(),
+    sizeBytes: int('size_bytes').notNull(),
+    width: int('width').notNull(),
+    height: int('height').notNull(),
+    status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending' | 'in_progress' | 'completed'
+    createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: datetime('updated_at')
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex('uqx_images_file_name').on(table.fileName),
+    index('idx_images_status').on(table.status),
+    index('idx_images_created_at').on(table.createdAt),
+  ],
+);
 
 // Tabla de Anotaciones (Bounding Boxes)
-export const annotations = mysqlTable('annotations', {
-  id: int('id').autoincrement().primaryKey(),
-  imageId: int('image_id')
-    .notNull()
-    .references(() => images.id, { onDelete: 'cascade' }),
-  categoryId: int('category_id')
-    .notNull()
-    .references(() => categories.id, { onDelete: 'restrict' }),
-  // Coordenadas absolutas en píxeles requeridas para exportación COCO
-  x: double('x').notNull(),
-  y: double('y').notNull(),
-  width: double('width').notNull(),
-  height: double('height').notNull(),
-  area: double('area').notNull(),
-  isCrowd: tinyint('is_crowd').notNull().default(0), // 0 o 1
-  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: datetime('updated_at')
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
-});
+export const annotations = mysqlTable(
+  'annotations',
+  {
+    id: int('id').autoincrement().primaryKey(),
+    imageId: int('image_id')
+      .notNull()
+      .references(() => images.id, { onDelete: 'cascade' }),
+    categoryId: int('category_id')
+      .notNull()
+      .references(() => categories.id, { onDelete: 'restrict' }),
+    // Coordenadas absolutas en píxeles requeridas para exportación COCO
+    x: double('x').notNull(),
+    y: double('y').notNull(),
+    width: double('width').notNull(),
+    height: double('height').notNull(),
+    area: double('area').notNull(),
+    isCrowd: tinyint('is_crowd').notNull().default(0), // 0 o 1
+    createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: datetime('updated_at')
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index('idx_annotations_image_id').on(table.imageId),
+    index('idx_annotations_category_id').on(table.categoryId),
+  ],
+);

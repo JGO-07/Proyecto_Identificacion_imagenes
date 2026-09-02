@@ -1,4 +1,4 @@
-# SPEC-DASH-01, SPEC-IMG-01 · RN-04, RN-05
+# SPEC-DASH-01 · RN-04 — Progreso de anotación (dashboard, Fase 2).
 # language: es
 
 @wip
@@ -26,8 +26,3 @@ Característica: Progreso de anotación
     Dado que el conteo de "car" es 3
     Cuando creo una anotación nueva de "car"
     Entonces el conteo de "car" es 4
-
-  Escenario: La primera anotación mueve la imagen a "in_progress"
-    Dada una imagen en estado "pending"
-    Cuando creo su primera anotación
-    Entonces la imagen queda en estado "in_progress"

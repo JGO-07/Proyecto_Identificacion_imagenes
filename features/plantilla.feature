@@ -1,26 +1,29 @@
-# SPEC-IMG-02 · RN-08 — Plantilla de referencia para el resto del equipo.
-# Copia este archivo, cambia el encabezado y los escenarios.
+# SPEC-XXX-00 · RN-00 — Plantilla de referencia para el resto del equipo.
+# Copia este archivo, renombra, cambia el encabezado (SPEC + RN) y los escenarios.
+# Regla: un Feature por regla de negocio; escenarios en presente; sin rutas HTTP
+# ni nombres de función en el texto Gherkin (eso vive en los step definitions).
+# Marca con @wip los escenarios que todavía no tienen prueba verde.
 # language: es
 
-Característica: Validación de carga de imágenes
-  Como anotador
-  Quiero que el sistema rechace archivos no válidos con un mensaje claro
-  Para no subir contenido que el portal no pueda procesar
+Característica: <Nombre corto de la capacidad>
+  Como <rol>
+  Quiero <objetivo>
+  Para <beneficio>
 
   Antecedentes:
-    Dado que existe el bucket de almacenamiento "annotation-images"
+    Dado <estado inicial común a todos los escenarios>
 
-  Escenario: Se acepta una imagen JPEG dentro del límite de tamaño
-    Cuando subo un archivo "gato.jpg" de tipo "image/jpeg" y 2 MB
-    Entonces la carga se realiza con éxito
-    Y la imagen queda registrada con estado "pending"
+  Escenario: <Caso feliz>
+    Cuando <acción del usuario>
+    Entonces <resultado observable>
+    Y <efecto secundario verificable>
 
-  Escenario: Se rechaza un formato no soportado
-    Cuando subo un archivo "notas.pdf" de tipo "application/pdf" y 1 MB
-    Entonces la carga se rechaza con el código "VALIDATION_ERROR"
-    Y el usuario ve el mensaje "Formato no soportado. Usa JPEG, PNG o WebP."
+  Escenario: <Caso de error con feedback claro>
+    Cuando <acción inválida>
+    Entonces la operación se rechaza con el código "<CODIGO_ERROR>"
+    Y el usuario ve un mensaje claro
 
-  Escenario: Se rechaza un archivo demasiado grande
-    Cuando subo un archivo "panorama.png" de tipo "image/png" y 15 MB
-    Entonces la carga se rechaza con el código "VALIDATION_ERROR"
-    Y el usuario ve el mensaje "El archivo supera el máximo de 10 MB."
+  @wip
+  Escenario: <Caso pendiente de implementar>
+    Cuando <acción>
+    Entonces <resultado esperado aún sin cubrir por pruebas>

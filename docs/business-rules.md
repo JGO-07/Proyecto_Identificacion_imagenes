@@ -8,14 +8,14 @@ archivo `.feature` en Gherkin.
 
 | Regla | SPEC | Archivo `.feature` | Estado |
 | :---- | :--- | :----------------- | :----- |
-| RN-01 Validez de una anotación | SPEC-ANOT-01 | `features/annotation-validity.feature` | Formalizada |
-| RN-02 Ninguna caja sin clase válida | SPEC-ANOT-02 | `features/annotation-validity.feature` | Formalizada |
-| RN-03 Cálculo del área | SPEC-ANOT-03 | `features/annotation-validity.feature` | Formalizada |
-| RN-04 Cálculo del progreso de anotación | SPEC-DASH-01 | `features/annotation-progress.feature` | Formalizada |
-| RN-05 Estados de una imagen | SPEC-IMG-01 | `features/annotation-progress.feature` | Borrador |
-| RN-06 Operadores de búsqueda (AND / OR) en SQL | SPEC-SEARCH-01 | `features/search-operators.feature` | Borrador |
-| RN-07 Filtros combinables con paginación | SPEC-SEARCH-02 | `features/search-operators.feature` | Borrador |
-| RN-08 Validación de carga de imágenes | SPEC-IMG-02 | `features/plantilla.feature` (ejemplo) | Borrador |
+| RN-01 Validez de una anotación | SPEC-ANOT-01 | `features/annotation-validity.feature` | Implementada + probada |
+| RN-02 Ninguna caja sin clase válida | SPEC-ANOT-02 | `features/annotation-validity.feature` | Implementada + probada |
+| RN-03 Cálculo del área | SPEC-ANOT-03 | `features/annotation-validity.feature` | Implementada + probada |
+| RN-04 Cálculo del progreso de anotación | SPEC-DASH-01 | `features/annotation-progress.feature` | `@wip` (Fase 2) |
+| RN-05 Estados de una imagen | SPEC-IMG-01 | `features/image-status.feature` | Implementada + probada |
+| RN-06 Operadores de búsqueda (AND / OR) en SQL | SPEC-SEARCH-01 | `features/search-operators.feature` | `@wip` (Fase 2) |
+| RN-07 Filtros combinables con paginación | SPEC-SEARCH-02 | `features/search-operators.feature` | `@wip` (Fase 2) |
+| RN-08 Validación de carga de imágenes | SPEC-IMG-02 | `features/image-upload.feature` | Implementada + probada |
 
 ---
 
@@ -55,11 +55,14 @@ valores fijos.
 
 ## RN-05 — Estados de una imagen
 **Regla.** `status ∈ {pending, in_progress, completed}`. Transiciones válidas:
-`pending → in_progress → completed` y cualquier estado `→ pending` (reapertura).
-Al crear la primera anotación de una imagen `pending`, pasa a `in_progress`.
+`pending → in_progress → completed` y cualquier estado `→ pending` (reapertura,
+manual vía `PATCH /api/images/:id`). Al crear la primera anotación de una imagen
+`pending`, pasa automáticamente a `in_progress`.
 **Motivo.** Base del cálculo de progreso (RN-04).
-**Implementación.** Enum en `src/db/types.ts` + `src/schemas/image.ts`; transición
-automática pendiente de Fase 1.
+**Implementación.** Enum en `src/db/types.ts` + `src/schemas/image.ts`. Transición
+automática: `shouldPromoteOnFirstAnnotation` en `src/lib/image-status.ts`, aplicada
+en `createAnnotation` (`src/services/annotations.service.ts`). Probada en
+`src/lib/image-status.spec.ts`.
 
 ## RN-06 — Operadores de búsqueda (AND / OR) en SQL
 **Regla.** Una búsqueda como `car AND person` devuelve las imágenes que tienen al
@@ -81,7 +84,12 @@ que acompaña la respuesta es consistente con los filtros aplicados.
 ## RN-08 — Validación de carga de imágenes
 **Regla.** Solo se aceptan archivos `image/jpeg`, `image/png`, `image/webp` de
 hasta 10 MB. La validación se hace **en el servidor** (no solo en el `accept` del
-input) y devuelve un mensaje claro al usuario, no un error 500.
+input) y devuelve un mensaje claro al usuario, no un error 500. Además se
+verifica que el binario sea realmente una imagen legible antes de guardarla.
 **Motivo.** Requisito explícito de la rúbrica (feedback al usuario).
-**Implementación.** `uploadFileSchema` en `src/schemas/image.ts`; el endpoint de
-carga multipart lo consume en Fase 1/2 (Rol 3 + Rol 2).
+**Implementación.** `POST /api/images/upload` (`src/api/routes/images.ts`) →
+`createImageFromUpload` (`src/services/images.service.ts`): valida con
+`uploadFileSchema`, extrae dimensiones con `image-size`, sube a MinIO y persiste
+metadatos. Errores: `422 INVALID_UPLOAD` (tipo/tamaño), `422 UNREADABLE_IMAGE`
+(binario ilegible), `400 NO_FILE` (sin archivo). Contratos probados en
+`src/api/api.spec.ts`.

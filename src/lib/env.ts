@@ -26,6 +26,10 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+
+  DATASET_URL: z
+    .url()
+    .default('https://huggingface.co/datasets/angpi/isau_proyecto_1_ds/resolve/main'),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -21,14 +21,12 @@ afterEach(() => {
 
 describe('apiClient', () => {
   it('valida y entrega un listado correcto de imágenes', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ data: [validImage], pagination: { limit: 20, offset: 0 } }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      );
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: [validImage], pagination: { limit: 20, offset: 0 } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await apiClient.images.list();

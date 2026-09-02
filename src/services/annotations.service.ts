@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 import { notFound, unprocessable } from '../api/errors.js';
 import { db } from '../db/index.js';
 import { annotations } from '../db/schema.js';
@@ -18,6 +18,13 @@ export async function listAnnotations(query: AnnotationListQuery): Promise<Annot
   const base = db.select().from(annotations).$dynamic();
   const filtered = imageId ? base.where(eq(annotations.imageId, imageId)) : base;
   return filtered.limit(limit).offset(offset).orderBy(annotations.id);
+}
+
+/** Total de anotaciones (opcionalmente de una imagen), para la paginación. */
+export async function countAnnotations(imageId?: number): Promise<number> {
+  const base = db.select({ total: count() }).from(annotations).$dynamic();
+  const rows = await (imageId ? base.where(eq(annotations.imageId, imageId)) : base);
+  return Number(rows[0]?.total ?? 0);
 }
 
 export async function getAnnotation(id: number): Promise<AnnotationRow | null> {

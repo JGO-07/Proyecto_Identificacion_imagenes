@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { IMAGE_STATUSES } from '../db/types.js';
+import { imageInsertSchema } from './entities.js';
 
 /** Tipos MIME aceptados para carga de imágenes (RN-08). */
 export const ACCEPTED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -8,19 +9,16 @@ export const ACCEPTED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as 
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 /**
- * Registro de metadatos de una imagen ya subida a MinIO. La subida binaria
- * (multipart) la resuelve la capa de carga; aquí solo se validan los metadatos
- * que se persisten en MariaDB.
+ * Registro de metadatos de una imagen ya subida a MinIO, derivado del esquema
+ * de inserción generado desde Drizzle. La subida binaria la resuelve el
+ * endpoint `POST /api/images/upload`.
  */
-export const imageCreateSchema = z.object({
-  fileName: z.string().min(1).max(255),
-  originalName: z.string().min(1).max(255),
-  storagePath: z.string().min(1),
-  mimeType: z.enum(ACCEPTED_MIME_TYPES),
-  sizeBytes: z.number().int().positive().max(MAX_IMAGE_BYTES),
-  width: z.number().int().positive(),
-  height: z.number().int().positive(),
-});
+export const imageCreateSchema = imageInsertSchema
+  .omit({ id: true, status: true, createdAt: true, updatedAt: true })
+  .extend({
+    mimeType: z.enum(ACCEPTED_MIME_TYPES),
+    sizeBytes: z.number().int().positive().max(MAX_IMAGE_BYTES),
+  });
 export type ImageCreate = z.infer<typeof imageCreateSchema>;
 
 /** Cambio de estado de anotación de una imagen. */

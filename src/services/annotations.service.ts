@@ -4,13 +4,14 @@ import { db } from '../db/index.js';
 import { annotations } from '../db/schema.js';
 import type { AnnotationRow } from '../db/types.js';
 import { computeArea, isWithinBounds } from '../lib/geometry.js';
+import { shouldPromoteOnFirstAnnotation } from '../lib/image-status.js';
 import type {
   AnnotationCreate,
   AnnotationListQuery,
   AnnotationUpdate,
 } from '../schemas/annotation.js';
 import { getCategory } from './categories.service.js';
-import { getImage } from './images.service.js';
+import { getImage, updateImageStatus } from './images.service.js';
 
 export async function listAnnotations(query: AnnotationListQuery): Promise<AnnotationRow[]> {
   const { limit, offset, imageId } = query;
@@ -56,6 +57,12 @@ export async function createAnnotation(input: AnnotationCreate): Promise<Annotat
   if (!created) {
     throw new Error('No se pudo recuperar la anotación recién creada');
   }
+
+  // RN-05: la primera anotación mueve la imagen de 'pending' a 'in_progress'.
+  if (shouldPromoteOnFirstAnnotation(image.status)) {
+    await updateImageStatus(image.id, { status: 'in_progress' });
+  }
+
   return created;
 }
 

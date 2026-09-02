@@ -23,6 +23,7 @@ Regla de negocio (RN-xx)  ->  SPEC-xx  ->  archivo .feature (Given/When/Then)  -
 | `annotation-validity.feature` | RN-01, RN-02, RN-03 |
 | `annotation-progress.feature` | RN-04, RN-05 |
 | `search-operators.feature` | RN-06, RN-07 |
+| `annotation-canvas.feature` | SPEC-UI-ANOT-01 (Rol 3, Fase 0) |
 
 ## Pruebas
 

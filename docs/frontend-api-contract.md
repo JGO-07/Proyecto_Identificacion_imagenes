@@ -54,8 +54,9 @@ type Annotation = {
 ```
 
 Los schemas ejecutables viven en `src/client/schemas/api.ts` y sus tipos se infieren
-con `z.infer` en `src/client/types/api.ts`. En Fase 1 se usarán para validar cada
-respuesta externa antes de entregarla a los componentes.
+con `z.infer` en `src/client/types/api.ts`. También contiene los contratos de entrada
+que debe validar el navegador. Se mantienen separados de los schemas de persistencia
+del servidor para evitar incluir Drizzle, MariaDB o MinIO en el bundle del frontend.
 
 ## 3. Necesidades por pantalla
 
@@ -67,7 +68,7 @@ integración con la infraestructura real para evitar un modo parcialmente persis
 | :------- | :-------- | :------- | :----- |
 | Bandeja | listar imágenes | `GET /api/images?limit=&offset=` | Disponible |
 | Bandeja | cambiar estado | `PATCH /api/images/:id` | Disponible |
-| Carga | enviar archivo binario | `POST /api/images/upload` (`multipart/form-data`) | **Pendiente de acordar** |
+| Carga | enviar archivo binario | `POST /api/images/upload` (`multipart/form-data`, campo `file`) | Disponible |
 | Anotación | obtener imagen | `GET /api/images/:id` | Disponible |
 | Anotación | listar categorías | `GET /api/categories` | Disponible |
 | Anotación | listar cajas | `GET /api/annotations?imageId=:id` | Disponible |
@@ -141,22 +142,17 @@ El servidor repite la validación porque el cliente no es una frontera confiable
 | `CATEGORY_IN_USE` | explicar que la categoría está asociada a cajas |
 | `INTERNAL` | informar que no se pudo completar y permitir reintento |
 
-## 7. Acuerdo pendiente para Sync 2
+## 7. Acuerdos de integración después de Sync 2
 
-El contrato actual no define la carga binaria. Rol 2 y Rol 3 deben cerrar antes de
-Fase 1:
+Rol 2 implementó la carga individual en `POST /api/images/upload` con
+`multipart/form-data`, campo `file`. Acepta JPEG, PNG o WebP de hasta 10 MB y responde
+`201 { data: Image }`. Los errores publicados son `NO_FILE`, `INVALID_UPLOAD` y
+`UNREADABLE_IMAGE`.
 
-1. nombre definitivo de `POST /api/images/upload`;
-2. nombre del campo multipart (`file` propuesto);
-3. si acepta uno o varios archivos;
-4. forma de reportar progreso;
-5. si la respuesta devuelve una URL temporal o un endpoint para visualizar la imagen;
-6. códigos para MIME inválido, exceso de 10 MB y fallo de MinIO.
+Antes de activar toda la UI contra la API todavía debe verificarse:
 
-Mientras esto no se acuerde, la pantalla de carga permanece explícitamente en modo
-demostración y no simula una persistencia inexistente.
-
-También debe cerrarse una discrepancia menor de paginación: el contrato contempla un
-conteo `total`, pero las rutas actuales devuelven únicamente `limit` y `offset`. El
-schema del cliente acepta temporalmente `total` como opcional hasta que Rol 2 defina
-la respuesta definitiva.
+1. cómo visualizar desde el navegador el objeto almacenado en MinIO;
+2. si el progreso de carga se incluirá en esta fase;
+3. una prueba de extremo a extremo con MariaDB y MinIO desde una instalación limpia;
+4. la discrepancia de paginación: el cliente acepta `total` como opcional porque las
+   rutas actuales solo devuelven `limit` y `offset`.

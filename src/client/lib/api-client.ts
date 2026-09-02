@@ -1,16 +1,17 @@
 import type { z } from 'zod';
-import { annotationCreateSchema, annotationUpdateSchema } from '../../schemas/annotation.js';
 import {
+  annotationCreateInputSchema,
   annotationListResponseSchema,
   annotationResponseSchema,
+  annotationUpdateInputSchema,
   apiErrorSchema,
   categoryListResponseSchema,
   imageListResponseSchema,
   imageResponseSchema,
 } from '../schemas/api.js';
 
-type AnnotationCreateInput = z.input<typeof annotationCreateSchema>;
-type AnnotationUpdateInput = z.input<typeof annotationUpdateSchema>;
+type AnnotationCreateInput = z.input<typeof annotationCreateInputSchema>;
+type AnnotationUpdateInput = z.input<typeof annotationUpdateInputSchema>;
 
 interface PaginationInput {
   limit?: number;
@@ -118,14 +119,14 @@ export const apiClient = {
       return request(`/api/annotations?${params}`, annotationListResponseSchema);
     },
     create(input: AnnotationCreateInput) {
-      const body = annotationCreateSchema.parse(input);
+      const body = annotationCreateInputSchema.parse(input);
       return request('/api/annotations', annotationResponseSchema, {
         method: 'POST',
         body: JSON.stringify(body),
       });
     },
     update(id: number, input: AnnotationUpdateInput) {
-      const body = annotationUpdateSchema.parse(input);
+      const body = annotationUpdateInputSchema.parse(input);
       return request(`/api/annotations/${id}`, annotationResponseSchema, {
         method: 'PATCH',
         body: JSON.stringify(body),

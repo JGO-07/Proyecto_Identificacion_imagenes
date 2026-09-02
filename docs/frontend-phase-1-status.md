@@ -1,8 +1,8 @@
 # Estado del frontend — Rol 3, Fase 1
 
 **Rama:** `feat/phase-1-rol3`  
-**Base:** commit de cierre de Fase 0 `01eb129`  
-**Estado:** desarrollo local independiente terminado; integración con almacenamiento pendiente.
+**Base:** `main` después de integrar las fases 1 de los roles 1 y 2 (`33db47e`)
+**Estado:** desarrollo local rebasado; integración de la UI con la API pendiente.
 
 ## Implementado
 
@@ -20,17 +20,16 @@
 
 ## Integración pendiente
 
-El cliente HTTP existe, pero las pantallas permanecen en modo local para no presentar
-como persistentes operaciones que el backend todavía no puede completar de extremo a
-extremo.
+El cliente HTTP existe, pero las pantallas permanecen en modo local hasta comprobar
+el flujo completo con la infraestructura real. El Rol 2 ya implementó la carga
+multipart individual mediante `POST /api/images/upload`, campo `file`.
 
-Rol 2 y Rol 3 deben cerrar estos puntos antes de activar el modo API:
+Rol 3 debe cerrar estos puntos antes de activar el modo API:
 
-1. endpoint multipart definitivo para subir el archivo binario;
-2. nombre del campo multipart y forma de la respuesta;
-3. endpoint o URL autorizada para visualizar objetos almacenados en MinIO;
-4. campo `total` de las respuestas paginadas;
-5. prueba con MariaDB y MinIO desde una instalación limpia.
+1. agregar el envío multipart al cliente y conectarlo a la pantalla de carga;
+2. acordar con Rol 2 el endpoint o URL autorizada para visualizar objetos de MinIO;
+3. resolver o aceptar formalmente la ausencia de `total` en la paginación;
+4. probar el flujo con MariaDB y MinIO desde una instalación limpia.
 
 Después de resolverlos se reemplazará la fuente local por `apiClient`, se mostrarán
 estados de carga/error por petición y se verificará la persistencia con una recarga
@@ -51,7 +50,7 @@ a20ee1a feat(frontend): validar archivos coordenadas y respuestas API  (Green)
 ## Verificación local
 
 ```bash
-npm test           # 27 pruebas
+npm test           # 59 pruebas después de integrar los roles 1 y 2
 npm run typecheck  # servidor y frontend
 npm run lint       # Biome sobre todo el repositorio
 npm run build      # servidor + cliente Vite

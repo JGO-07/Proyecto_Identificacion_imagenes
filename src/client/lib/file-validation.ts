@@ -1,4 +1,4 @@
-import { ACCEPTED_MIME_TYPES, MAX_IMAGE_BYTES, uploadFileSchema } from '../../schemas/image.js';
+import { ACCEPTED_MIME_TYPES, MAX_IMAGE_BYTES, uploadFileInputSchema } from '../schemas/api.js';
 
 export interface ImageFileCandidate {
   name: string;
@@ -45,7 +45,10 @@ export function validateImageFile(file: ImageFileCandidate): ImageFileValidation
     };
   }
 
-  const parsed = uploadFileSchema.safeParse({ mimeType: acceptedMimeType, sizeBytes: file.size });
+  const parsed = uploadFileInputSchema.safeParse({
+    mimeType: acceptedMimeType,
+    sizeBytes: file.size,
+  });
   if (!parsed.success) {
     return {
       ok: false,

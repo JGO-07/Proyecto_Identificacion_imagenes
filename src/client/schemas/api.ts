@@ -54,3 +54,18 @@ export const apiErrorSchema = z.object({
     details: z.unknown().optional(),
   }),
 });
+
+export const imageResponseSchema = z.object({ data: apiImageSchema });
+export const imageListResponseSchema = z.object({
+  data: z.array(apiImageSchema),
+  pagination: paginationSchema,
+});
+export const categoryListResponseSchema = z.object({
+  data: z.array(apiCategorySchema),
+  pagination: paginationSchema,
+});
+export const annotationResponseSchema = z.object({ data: apiAnnotationSchema });
+export const annotationListResponseSchema = z.object({
+  data: z.array(apiAnnotationSchema),
+  pagination: paginationSchema,
+});

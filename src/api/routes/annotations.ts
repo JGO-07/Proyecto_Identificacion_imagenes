@@ -13,8 +13,11 @@ export const annotationsRoutes = new Hono();
 
 annotationsRoutes.get('/', async (c) => {
   const query = annotationListQuerySchema.parse(c.req.query());
-  const data = await service.listAnnotations(query);
-  return c.json({ data, pagination: { limit: query.limit, offset: query.offset } });
+  const [data, total] = await Promise.all([
+    service.listAnnotations(query),
+    service.countAnnotations(query.imageId),
+  ]);
+  return c.json({ data, pagination: { limit: query.limit, offset: query.offset, total } });
 });
 
 annotationsRoutes.get('/:id', async (c) => {

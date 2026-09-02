@@ -1,3 +1,4 @@
+import { Readable } from 'node:stream';
 import { Hono } from 'hono';
 import { idParamSchema, paginationSchema } from '../../schemas/common.js';
 import { imageCreateSchema, imageUpdateSchema } from '../../schemas/image.js';
@@ -29,8 +30,8 @@ imagesRoutes.post('/upload', async (c) => {
 
 imagesRoutes.get('/', async (c) => {
   const query = paginationSchema.parse(c.req.query());
-  const data = await service.listImages(query);
-  return c.json({ data, pagination: query });
+  const [data, total] = await Promise.all([service.listImages(query), service.countImages()]);
+  return c.json({ data, pagination: { ...query, total } });
 });
 
 imagesRoutes.get('/:id', async (c) => {
@@ -40,6 +41,20 @@ imagesRoutes.get('/:id', async (c) => {
     throw notFound(`La imagen ${id} no existe`);
   }
   return c.json({ data: image });
+});
+
+/** Sirve el binario de la imagen (proxy a MinIO). Usar como `<img src>`. */
+imagesRoutes.get('/:id/file', async (c) => {
+  const { id } = idParamSchema.parse(c.req.param());
+  const file = await service.getImageFile(id);
+  if (!file) {
+    throw notFound(`La imagen ${id} no existe`);
+  }
+  return c.body(Readable.toWeb(file.body) as unknown as ReadableStream, 200, {
+    'Content-Type': file.contentType,
+    'Content-Length': String(file.contentLength),
+    'Cache-Control': 'private, max-age=3600',
+  });
 });
 
 imagesRoutes.post('/', async (c) => {

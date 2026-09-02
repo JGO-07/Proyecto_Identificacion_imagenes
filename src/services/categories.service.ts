@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { count, eq } from 'drizzle-orm';
 import { conflict } from '../api/errors.js';
 import { db } from '../db/index.js';
 import { categories } from '../db/schema.js';
@@ -9,6 +9,12 @@ import type { Pagination } from '../schemas/common.js';
 
 export async function listCategories({ limit, offset }: Pagination): Promise<CategoryRow[]> {
   return db.select().from(categories).limit(limit).offset(offset).orderBy(categories.id);
+}
+
+/** Total de categorías, para la paginación. */
+export async function countCategories(): Promise<number> {
+  const rows = await db.select({ total: count() }).from(categories);
+  return Number(rows[0]?.total ?? 0);
 }
 
 export async function getCategory(id: number): Promise<CategoryRow | null> {

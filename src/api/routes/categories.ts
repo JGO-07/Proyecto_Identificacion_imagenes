@@ -9,8 +9,11 @@ export const categoriesRoutes = new Hono();
 
 categoriesRoutes.get('/', async (c) => {
   const query = paginationSchema.parse(c.req.query());
-  const data = await service.listCategories(query);
-  return c.json({ data, pagination: query });
+  const [data, total] = await Promise.all([
+    service.listCategories(query),
+    service.countCategories(),
+  ]);
+  return c.json({ data, pagination: { ...query, total } });
 });
 
 categoriesRoutes.get('/:id', async (c) => {

@@ -1,4 +1,5 @@
-import { eq } from 'drizzle-orm';
+import type { Readable } from 'node:stream';
+import { count, eq } from 'drizzle-orm';
 import { imageSize } from 'image-size';
 import { unprocessable } from '../api/errors.js';
 import { db } from '../db/index.js';
@@ -13,9 +14,50 @@ export async function listImages({ limit, offset }: Pagination): Promise<ImageRo
   return db.select().from(images).limit(limit).offset(offset).orderBy(images.id);
 }
 
+/** Total de imágenes, para la paginación. */
+export async function countImages(): Promise<number> {
+  const rows = await db.select({ total: count() }).from(images);
+  return Number(rows[0]?.total ?? 0);
+}
+
 export async function getImage(id: number): Promise<ImageRow | null> {
   const rows = await db.select().from(images).where(eq(images.id, id)).limit(1);
   return rows[0] ?? null;
+}
+
+export interface ImageFile {
+  body: Readable;
+  contentType: string;
+  contentLength: number;
+}
+
+/**
+ * Objeto binario de una imagen, traído de MinIO. El navegador nunca accede a
+ * MinIO directamente: `storage_path` es interno y este servicio hace de proxy.
+ * Devuelve `null` si la imagen no existe; lanza `422 IMAGE_FILE_MISSING` si la
+ * fila existe pero el objeto no está en el bucket.
+ */
+export async function getImageFile(id: number): Promise<ImageFile | null> {
+  const image = await getImage(id);
+  if (!image) {
+    return null;
+  }
+  try {
+    const body = await minioClient.getObject(env.MINIO_BUCKET_NAME, image.storagePath);
+    return { body, contentType: image.mimeType, contentLength: image.sizeBytes };
+  } catch (error) {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      (error as { code?: string }).code === 'NoSuchKey'
+    ) {
+      throw unprocessable(
+        'IMAGE_FILE_MISSING',
+        `La imagen ${id} existe en la base pero su archivo no está en el almacenamiento`,
+      );
+    }
+    throw error;
+  }
 }
 
 export async function createImage(input: ImageCreate): Promise<ImageRow> {

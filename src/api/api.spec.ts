@@ -32,13 +32,14 @@ describe('health', () => {
 });
 
 describe('GET /api/categories', () => {
-  it('devuelve 200 con la lista y la paginación', async () => {
+  it('devuelve 200 con la lista y la paginación (con total)', async () => {
     vi.mocked(categoriesService.listCategories).mockResolvedValue([sampleCategory]);
+    vi.mocked(categoriesService.countCategories).mockResolvedValue(1);
     const res = await app.request('/api/categories?limit=5');
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data).toHaveLength(1);
-    expect(body.pagination).toEqual({ limit: 5, offset: 0 });
+    expect(body.pagination).toEqual({ limit: 5, offset: 0, total: 1 });
     expect(categoriesService.listCategories).toHaveBeenCalledWith({ limit: 5, offset: 0 });
   });
 
@@ -227,11 +228,42 @@ describe('imágenes', () => {
     updatedAt: new Date(),
   };
 
-  it('GET /api/images -> 200 con lista', async () => {
+  it('GET /api/images -> 200 con lista y total en la paginación', async () => {
     vi.mocked(imagesService.listImages).mockResolvedValue([sampleImage]);
+    vi.mocked(imagesService.countImages).mockResolvedValue(1);
     const res = await app.request('/api/images');
     expect(res.status).toBe(200);
-    expect((await res.json()).data).toHaveLength(1);
+    const body = await res.json();
+    expect(body.data).toHaveLength(1);
+    expect(body.pagination).toEqual({ limit: 20, offset: 0, total: 1 });
+  });
+
+  it('GET /api/images/:id/file -> 200 con el binario y su Content-Type', async () => {
+    const { Readable } = await import('node:stream');
+    vi.mocked(imagesService.getImageFile).mockResolvedValue({
+      body: Readable.from([Buffer.from('bytes-de-imagen')]),
+      contentType: 'image/jpeg',
+      contentLength: 14,
+    });
+    const res = await app.request('/api/images/1/file');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('image/jpeg');
+    expect(await res.text()).toBe('bytes-de-imagen');
+  });
+
+  it('GET /api/images/:id/file -> 404 si la imagen no existe', async () => {
+    vi.mocked(imagesService.getImageFile).mockResolvedValue(null);
+    const res = await app.request('/api/images/999/file');
+    expect(res.status).toBe(404);
+  });
+
+  it('GET /api/images/:id/file -> 422 si el archivo no está en el almacenamiento', async () => {
+    vi.mocked(imagesService.getImageFile).mockRejectedValue(
+      new AppError(422, 'IMAGE_FILE_MISSING', 'El archivo no está en el almacenamiento'),
+    );
+    const res = await app.request('/api/images/1/file');
+    expect(res.status).toBe(422);
+    expect((await res.json()).error.code).toBe('IMAGE_FILE_MISSING');
   });
 
   it('PATCH /api/images/:id con status inválido -> 400', async () => {

@@ -1358,6 +1358,10 @@ h2,
   display: block;
 }
 
+.canvas-container.drawing canvas {
+  cursor: crosshair;
+}
+
 .canvas-caption {
   display: flex;
   justify-content: space-between;

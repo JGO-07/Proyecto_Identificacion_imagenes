@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { AnnotationCanvas } from '../components/AnnotationCanvas.js';
+import { AnnotationCanvas, type CanvasTool } from '../components/AnnotationCanvas.js';
 import { DemoBadge } from '../components/DemoBadge.js';
 import { StatusBadge } from '../components/StatusBadge.js';
 import { useAnnotationStore } from '../store/annotation-store.js';
@@ -11,14 +12,22 @@ export function AnnotationPage() {
   const categories = useAnnotationStore((state) => state.categories);
   const annotations = useAnnotationStore((state) => state.annotations);
   const selectedAnnotationId = useAnnotationStore((state) => state.selectedAnnotationId);
+  const selectedCategoryId = useAnnotationStore((state) => state.selectedCategoryId);
+  const createAnnotation = useAnnotationStore((state) => state.createAnnotation);
   const selectAnnotation = useAnnotationStore((state) => state.selectAnnotation);
+  const selectCategory = useAnnotationStore((state) => state.selectCategory);
   const updateAnnotation = useAnnotationStore((state) => state.updateAnnotation);
   const resetDemo = useAnnotationStore((state) => state.resetDemo);
+  const [activeTool, setActiveTool] = useState<CanvasTool>('select');
+  const [feedback, setFeedback] = useState(
+    'Selecciona “Nueva caja” y arrastra sobre la imagen para crear una anotación.',
+  );
 
   const image = images.find((item) => item.id === numericImageId);
   const imageAnnotations = annotations.filter(
     (annotation) => annotation.imageId === numericImageId,
   );
+  const selectedCategory = categories.find((category) => category.id === selectedCategoryId);
 
   if (!image) {
     return (
@@ -73,8 +82,14 @@ export function AnnotationPage() {
           <div className="category-list">
             {categories.map((category, index) => (
               <button
-                className={index === 0 ? 'category-option active' : 'category-option'}
+                className={
+                  category.id === selectedCategoryId ? 'category-option active' : 'category-option'
+                }
                 key={category.id}
+                onClick={() => {
+                  selectCategory(category.id);
+                  setFeedback(`Categoría “${category.name}” seleccionada.`);
+                }}
                 type="button"
               >
                 <span className="category-color" style={{ backgroundColor: category.color }} />
@@ -85,18 +100,32 @@ export function AnnotationPage() {
           </div>
           <div className="tool-tip">
             <span aria-hidden="true">i</span>
-            <p>El prototipo permite mover y redimensionar las cajas existentes solo en memoria.</p>
+            <p>Las cajas nuevas, sus movimientos y cambios de tamaño permanecen en memoria.</p>
           </div>
         </aside>
 
         <section className="canvas-panel">
           <div className="canvas-toolbar">
             <div className="toolbar-group">
-              <button className="tool-button active" type="button">
+              <button
+                className={`tool-button${activeTool === 'select' ? ' active' : ''}`}
+                onClick={() => setActiveTool('select')}
+                type="button"
+              >
                 <span aria-hidden="true">↖</span>
                 Seleccionar
               </button>
-              <button className="tool-button" disabled type="button">
+              <button
+                className={`tool-button${activeTool === 'draw' ? ' active' : ''}`}
+                disabled={!selectedCategory}
+                onClick={() => {
+                  setActiveTool('draw');
+                  setFeedback(
+                    `Dibuja una caja para la categoría “${selectedCategory?.name ?? ''}”.`,
+                  );
+                }}
+                type="button"
+              >
                 <span aria-hidden="true">□</span>
                 Nueva caja
               </button>
@@ -117,9 +146,21 @@ export function AnnotationPage() {
           <AnnotationCanvas
             annotations={imageAnnotations}
             categories={categories}
+            draftCategory={selectedCategory}
             imageHeight={image.height}
             imageWidth={image.width}
+            mode={activeTool}
             onChange={updateAnnotation}
+            onCreate={(box) => {
+              if (!selectedCategory) {
+                setFeedback('Selecciona una categoría antes de dibujar.');
+                return;
+              }
+
+              createAnnotation(image.id, selectedCategory.id, box);
+              setActiveTool('select');
+              setFeedback(`Caja de “${selectedCategory.name}” creada. El cambio aún es local.`);
+            }}
             onSelect={selectAnnotation}
             selectedId={selectedAnnotationId}
           />
@@ -127,7 +168,7 @@ export function AnnotationPage() {
             <span>
               <i className="caption-dot" /> Coordenadas en píxeles absolutos
             </span>
-            <span>Los cambios no persisten al recargar en Fase 0</span>
+            <span aria-live="polite">{feedback}</span>
           </div>
         </section>
 

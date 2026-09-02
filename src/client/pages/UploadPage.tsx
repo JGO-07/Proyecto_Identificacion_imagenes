@@ -1,9 +1,7 @@
 import { type ChangeEvent, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DemoBadge } from '../components/DemoBadge.js';
-
-const MAX_BYTES = 10 * 1024 * 1024;
-const ACCEPTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+import { validateImageFile } from '../lib/file-validation.js';
 
 interface SelectionState {
   file: File | null;
@@ -31,19 +29,11 @@ export function UploadPage() {
       return;
     }
 
-    if (!ACCEPTED_TYPES.has(file.type)) {
+    const result = validateImageFile(file);
+    if (!result.ok) {
       setSelection({
         file,
-        message: 'Formato no soportado. Usa JPEG, PNG o WebP.',
-        tone: 'error',
-      });
-      return;
-    }
-
-    if (file.size > MAX_BYTES) {
-      setSelection({
-        file,
-        message: 'El archivo supera el máximo de 10 MB.',
+        message: result.message,
         tone: 'error',
       });
       return;
@@ -51,7 +41,7 @@ export function UploadPage() {
 
     setSelection({
       file,
-      message: 'Archivo válido. La subida al servidor se conectará en Fase 1.',
+      message: 'Archivo válido. Falta conectar el endpoint multipart del servidor.',
       tone: 'success',
     });
   };
@@ -135,9 +125,9 @@ export function UploadPage() {
             <li>El servidor volverá a validar el tipo y el tamaño en Fase 1.</li>
           </ul>
           <div className="phase-note">
-            <strong>Alcance de Fase 0</strong>
+            <strong>Estado de integración</strong>
             <p>
-              Esta pantalla valida localmente para demostrar el feedback; todavía no sube a MinIO.
+              La validación compartida ya funciona; la carga a MinIO espera el contrato multipart.
             </p>
           </div>
         </aside>

@@ -1,15 +1,26 @@
 import type Konva from 'konva';
 import { useEffect, useRef, useState } from 'react';
 import { Circle, Group, Layer, Line, Rect, Stage, Text, Transformer } from 'react-konva';
+import {
+  type BoundingBox,
+  type Point,
+  createBoxFromPoints,
+  toImagePoint,
+} from '../lib/canvas-geometry.js';
 import type { ApiAnnotation, ApiCategory } from '../types/api.js';
+
+export type CanvasTool = 'select' | 'draw';
 
 interface AnnotationCanvasProps {
   annotations: ApiAnnotation[];
   categories: ApiCategory[];
+  draftCategory: ApiCategory | undefined;
   imageHeight: number;
   imageWidth: number;
+  mode: CanvasTool;
   selectedId: number | null;
   onChange: (id: number, changes: Partial<ApiAnnotation>) => void;
+  onCreate: (box: BoundingBox) => void;
   onSelect: (id: number | null) => void;
 }
 
@@ -18,6 +29,7 @@ interface BoxShapeProps {
   category: ApiCategory | undefined;
   imageHeight: number;
   imageWidth: number;
+  isInteractive: boolean;
   isSelected: boolean;
   onChange: AnnotationCanvasProps['onChange'];
   onSelect: AnnotationCanvasProps['onSelect'];
@@ -28,6 +40,7 @@ function BoxShape({
   category,
   imageHeight,
   imageWidth,
+  isInteractive,
   isSelected,
   onChange,
   onSelect,
@@ -48,13 +61,14 @@ function BoxShape({
     <>
       <Rect
         cornerRadius={8}
-        draggable
+        draggable={isInteractive}
         dragBoundFunc={(position) => ({
           x: Math.min(Math.max(0, position.x), imageWidth - annotation.width),
           y: Math.min(Math.max(0, position.y), imageHeight - annotation.height),
         })}
         fill={`${color}20`}
         height={annotation.height}
+        listening={isInteractive}
         onClick={() => onSelect(annotation.id)}
         onDragEnd={(event) =>
           onChange(annotation.id, {
@@ -91,7 +105,7 @@ function BoxShape({
         x={annotation.x}
         y={annotation.y}
       />
-      <Group x={annotation.x} y={Math.max(0, annotation.y - 38)}>
+      <Group listening={false} x={annotation.x} y={Math.max(0, annotation.y - 38)}>
         <Rect cornerRadius={[7, 7, 0, 0]} fill={color} height={38} width={160} />
         <Text
           fill="#FFFFFF"
@@ -105,7 +119,7 @@ function BoxShape({
           width={160}
         />
       </Group>
-      {isSelected && (
+      {isSelected && isInteractive && (
         <Transformer
           anchorCornerRadius={4}
           anchorFill="#FFFFFF"
@@ -221,14 +235,19 @@ function SceneBackdrop({ height, width }: { height: number; width: number }) {
 export function AnnotationCanvas({
   annotations,
   categories,
+  draftCategory,
   imageHeight,
   imageWidth,
+  mode,
   selectedId,
   onChange,
+  onCreate,
   onSelect,
 }: AnnotationCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(960);
+  const [drawStart, setDrawStart] = useState<Point | null>(null);
+  const [draftBox, setDraftBox] = useState<BoundingBox | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -245,44 +264,112 @@ export function AnnotationCanvas({
 
   const scale = containerWidth / imageWidth;
   const stageHeight = imageHeight * scale;
+  const imageSize = { width: imageWidth, height: imageHeight };
+
+  const getImagePointer = (stage: Konva.Stage) => {
+    const position = stage.getPointerPosition();
+    return position ? toImagePoint(position, scale) : null;
+  };
+
+  const handlePointerDown = (event: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    const stage = event.target.getStage();
+    if (!stage) {
+      return;
+    }
+
+    if (mode === 'draw') {
+      const point = getImagePointer(stage);
+      if (point) {
+        setDrawStart(point);
+        setDraftBox(null);
+        onSelect(null);
+      }
+      return;
+    }
+
+    if (event.target === stage) {
+      onSelect(null);
+    }
+  };
+
+  const handlePointerMove = (event: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    if (mode !== 'draw' || !drawStart) {
+      return;
+    }
+
+    const stage = event.target.getStage();
+    const point = stage ? getImagePointer(stage) : null;
+    if (point) {
+      setDraftBox(createBoxFromPoints(drawStart, point, imageSize, 1));
+    }
+  };
+
+  const handlePointerUp = (event: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    if (mode !== 'draw' || !drawStart) {
+      return;
+    }
+
+    const stage = event.target.getStage();
+    const point = stage ? getImagePointer(stage) : null;
+    const completedBox = point ? createBoxFromPoints(drawStart, point, imageSize) : null;
+    setDrawStart(null);
+    setDraftBox(null);
+
+    if (completedBox) {
+      onCreate(completedBox);
+    }
+  };
 
   return (
     <div
-      aria-label="Canvas de anotación simulado. Selecciona, mueve o redimensiona una caja."
-      className="canvas-container"
+      aria-label="Canvas de anotación. Dibuja, selecciona, mueve o redimensiona una caja."
+      className={`canvas-container${mode === 'draw' ? ' drawing' : ''}`}
       ref={containerRef}
       role="application"
     >
       <Stage
         height={stageHeight}
-        onMouseDown={(event) => {
-          if (event.target === event.target.getStage()) {
-            onSelect(null);
-          }
-        }}
-        onTouchStart={(event) => {
-          if (event.target === event.target.getStage()) {
-            onSelect(null);
-          }
-        }}
+        onMouseDown={handlePointerDown}
+        onMouseMove={handlePointerMove}
+        onMouseUp={handlePointerUp}
+        onTouchEnd={handlePointerUp}
+        onTouchMove={handlePointerMove}
+        onTouchStart={handlePointerDown}
         scaleX={scale}
         scaleY={scale}
         width={containerWidth}
       >
         <Layer>
-          <SceneBackdrop height={imageHeight} width={imageWidth} />
+          <Group listening={false}>
+            <SceneBackdrop height={imageHeight} width={imageWidth} />
+          </Group>
           {annotations.map((annotation) => (
             <BoxShape
               annotation={annotation}
               category={categories.find((category) => category.id === annotation.categoryId)}
               imageHeight={imageHeight}
               imageWidth={imageWidth}
+              isInteractive={mode === 'select'}
               isSelected={annotation.id === selectedId}
               key={annotation.id}
               onChange={onChange}
               onSelect={onSelect}
             />
           ))}
+          {draftBox && (
+            <Rect
+              dash={[18, 10]}
+              fill={`${draftCategory?.color ?? '#FFFFFF'}18`}
+              height={draftBox.height}
+              listening={false}
+              stroke={draftCategory?.color ?? '#FFFFFF'}
+              strokeScaleEnabled={false}
+              strokeWidth={3}
+              width={draftBox.width}
+              x={draftBox.x}
+              y={draftBox.y}
+            />
+          )}
         </Layer>
       </Stage>
     </div>

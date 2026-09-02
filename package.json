@@ -4,10 +4,12 @@
   "description": "Monolito para etiquetado y anotación de imágenes con soporte de exportación en formato COCO.",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "concurrently -k -n api,web -c blue,magenta \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "tsx watch src/server.ts",
+    "dev:web": "vite",
     "start": "node dist/server.js",
-    "build": "tsc",
-    "typecheck": "tsc --noEmit",
+    "build": "tsc && vite build",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.client.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "biome check .",
@@ -25,11 +27,16 @@
   },
   "homepage": "https://github.com/JGO-07/Proyecto_Identificacion_imagenes#readme",
   "devDependencies": {
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.2",
     "@biomejs/biome": "^1.9.4",
     "@types/node": "^26.4.0",
+    "concurrently": "^9.2.1",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.19.2",
     "typescript": "^7.0.2",
+    "vite": "^7.1.4",
     "vitest": "^2.1.8"
   },
   "dependencies": {
@@ -39,6 +46,12 @@
     "hono": "^4.6.14",
     "minio": "^8.0.7",
     "mysql2": "^3.24.2",
+    "konva": "^9.3.22",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-konva": "^19.0.10",
+    "react-router-dom": "^7.8.2",
+    "zustand": "^5.0.8",
     "zod": "^4.0.0"
   }
 }

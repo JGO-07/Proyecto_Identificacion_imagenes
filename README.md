@@ -58,15 +58,21 @@ para metadatos relacionales, y MinIO (S3-compatible) para los archivos binarios 
 
 ## Cómo levantar el proyecto
 
-> Los pasos de migración, seeder y arranque del servidor se implementan en la Fase 1.
-> Esta sección deja los comandos previstos como referencia (placeholders).
+La Fase 0 del frontend usa Vite en `http://localhost:5173` y redirige las rutas
+`/api` al servidor Hono en `http://localhost:3000`.
 
 ```bash
-npm run typecheck        # verifica el proyecto con tsc --noEmit
+npm run dev              # levanta API (:3000) y frontend (:5173)
+npm run dev:api          # levanta solo la API
+npm run dev:web          # levanta solo el frontend con datos simulados
+npm run typecheck        # verifica servidor y frontend con TypeScript
+npm run build            # compila servidor y genera dist/client
 npm run db:migrate       # (Fase 1) aplica las migraciones versionadas de Drizzle
 npm run db:seed          # (Fase 1) carga categorías e imágenes de ejemplo (idempotente)
-npm run dev              # (Fase 1) arranca la app en http://localhost:3000
 ```
+
+> En Fase 0 las pantallas y el canvas usan datos simulados identificados en la UI.
+> La carga multipart y la persistencia de anotaciones se conectan en Fase 1.
 
 ## Estructura del proyecto
 
@@ -75,15 +81,21 @@ npm run dev              # (Fase 1) arranca la app en http://localhost:3000
 ├── docker-compose.yml     # MariaDB + MinIO
 ├── .env.example           # plantilla de variables de entorno (sin secretos reales)
 ├── docs/
-│   └── data-model.md      # modelo de datos acordado por el equipo (Sync 1)
+│   ├── data-model.md      # modelo de datos acordado por el equipo (Sync 1)
+│   ├── frontend-flow.md   # flujo, wireframes y estados de las pantallas
+│   └── frontend-api-contract.md # contrato consumido por el frontend
+├── features/
+│   └── annotation-canvas.feature # escenarios del canvas del Rol 3
 ├── src/
+│   ├── client/            # aplicación React y prototipo de anotación
 │   ├── db/
 │   │   ├── index.ts       # cliente Drizzle → MariaDB (Fase 1)
 │   │   ├── schema.ts      # esquema Drizzle (borrador Sync 1)
 │   │   └── seed.ts        # seeder idempotente (Fase 1)
 │   └── storage/
 │       └── minio.ts       # cliente MinIO
-└── tsconfig.json          # TypeScript en modo strict
+├── tsconfig.json          # TypeScript strict del servidor
+└── tsconfig.client.json   # TypeScript strict del frontend
 ```
 
 ## Convenciones

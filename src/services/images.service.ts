@@ -1,22 +1,74 @@
 import type { Readable } from 'node:stream';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, exists, gte, lte, sql } from 'drizzle-orm';
 import { imageSize } from 'image-size';
 import { unprocessable } from '../api/errors.js';
 import { db } from '../db/index.js';
-import { images } from '../db/schema.js';
-import type { ImageRow } from '../db/types.js';
+import { annotations, images } from '../db/schema.js';
+import type { ImageRow, ImageStatus } from '../db/types.js';
 import { env } from '../lib/env.js';
 import type { Pagination } from '../schemas/common.js';
 import { type ImageCreate, type ImageUpdate, uploadFileSchema } from '../schemas/image.js';
 import { ensureBucket, minioClient } from '../storage/minio.js';
 
-export async function listImages({ limit, offset }: Pagination): Promise<ImageRow[]> {
-  return db.select().from(images).limit(limit).offset(offset).orderBy(images.id);
+/** RN-07: filtros combinables por clase, estado y rango de fechas de creación. */
+export interface ImageFilters {
+  status?: ImageStatus;
+  categoryId?: number;
+  from?: Date;
+  to?: Date;
 }
 
-/** Total de imágenes, para la paginación. */
-export async function countImages(): Promise<number> {
-  const rows = await db.select({ total: count() }).from(images);
+/** Condición WHERE combinada (AND) a partir de los filtros presentes. */
+function imageFilterCondition(filters: ImageFilters) {
+  const conditions = [];
+  if (filters.status) {
+    conditions.push(eq(images.status, filters.status));
+  }
+  if (filters.from) {
+    conditions.push(gte(images.createdAt, filters.from));
+  }
+  if (filters.to) {
+    conditions.push(lte(images.createdAt, filters.to));
+  }
+  if (filters.categoryId !== undefined) {
+    conditions.push(
+      exists(
+        db
+          .select({ one: sql`1` })
+          .from(annotations)
+          .where(
+            and(eq(annotations.imageId, images.id), eq(annotations.categoryId, filters.categoryId)),
+          ),
+      ),
+    );
+  }
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+/** Página de imágenes que cumplen los filtros (todo resuelto en SQL). */
+export function buildFilteredImages(filters: ImageFilters, { limit, offset }: Pagination) {
+  return db
+    .select()
+    .from(images)
+    .where(imageFilterCondition(filters))
+    .orderBy(images.id)
+    .limit(limit)
+    .offset(offset);
+}
+
+/** Conteo total con los MISMOS filtros (para una paginación consistente). */
+export function buildFilteredImagesCount(filters: ImageFilters) {
+  return db.select({ total: count() }).from(images).where(imageFilterCondition(filters));
+}
+
+export async function listImages(query: Pagination & ImageFilters): Promise<ImageRow[]> {
+  const { limit, offset, ...filters } = query;
+  return buildFilteredImages(filters, { limit, offset });
+}
+
+/** Total de imágenes (opcionalmente filtrado), para la paginación. */
+export async function countImages(filters: ImageFilters = {}): Promise<number> {
+  const rows = await buildFilteredImagesCount(filters);
   return Number(rows[0]?.total ?? 0);
 }
 

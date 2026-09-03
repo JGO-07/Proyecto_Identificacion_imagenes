@@ -1,7 +1,11 @@
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  // Evita bloqueos de OneDrive sobre node_modules/.vite durante la optimización.
+  cacheDir: join(tmpdir(), 'proyecto-identificacion-imagenes-vite'),
   plugins: [react()],
   server: {
     host: '127.0.0.1',
@@ -16,9 +20,23 @@ export default defineConfig({
     emptyOutDir: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          canvas: ['konva', 'react-konva'],
-          react: ['react', 'react-dom', 'react-router-dom', 'zustand'],
+        manualChunks(id) {
+          if (id.includes('/node_modules/konva/') || id.includes('/node_modules/react-konva/')) {
+            return 'canvas';
+          }
+
+          if (
+            id.includes('/node_modules/react/') ||
+            id.includes('/node_modules/react-dom/') ||
+            id.includes('/node_modules/react-router') ||
+            id.includes('/node_modules/zustand/')
+          ) {
+            return 'react';
+          }
+
+          if (id.includes('/node_modules/zod/')) {
+            return 'validation';
+          }
         },
       },
     },

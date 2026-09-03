@@ -1,7 +1,6 @@
-# SPEC-UI-ANOT-01 · Flujo del canvas del Rol 3 (Fase 0).
+# SPEC-UI-ANOT-01 · Flujo persistente del canvas del Rol 3 (Fase 1).
 # language: es
 
-@wip
 Característica: Manipulación básica de bounding boxes
   Como persona anotadora
   Quiero crear y ajustar cajas sobre una imagen
@@ -17,6 +16,7 @@ Característica: Manipulación básica de bounding boxes
     Entonces aparece una caja de 240 x 220 píxeles
     Y la caja muestra la categoría "Persona"
     Y la caja permanece completamente dentro de la imagen
+    Y al recargar la página la caja vuelve a aparecer
 
   Escenario: Impedir una caja sin categoría
     Dado que no hay una categoría seleccionada
@@ -29,12 +29,14 @@ Característica: Manipulación básica de bounding boxes
     Cuando la arrastro a la posición (300, 180)
     Entonces la caja conserva su tamaño de 240 x 220 píxeles
     Y su nueva posición es (300, 180)
+    Y al recargar la página conserva la nueva posición
 
   Escenario: Redimensionar una caja existente
     Dada una caja de "Persona" en (300, 180) de 240 x 220 píxeles
     Cuando arrastro su esquina inferior derecha hasta (620, 520)
     Entonces la caja mide 320 x 340 píxeles
     Y la caja permanece completamente dentro de la imagen
+    Y al recargar la página conserva el nuevo tamaño
 
   Escenario: Conservar coordenadas absolutas en un canvas escalado
     Dado que la imagen se muestra al 50 por ciento de su tamaño original

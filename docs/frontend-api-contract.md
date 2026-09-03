@@ -1,4 +1,4 @@
-# Contrato de consumo del frontend — Rol 3 (Fase 0)
+# Contrato de consumo del frontend — Rol 3 (Fase 1)
 
 Este documento traduce [`api-contract.md`](./api-contract.md) a las necesidades de las
 pantallas del frontend. No redefine la API: conserva el contrato publicado por Rol 2.
@@ -10,6 +10,7 @@ pantallas del frontend. No redefine la API: conserva el contrato publicado por R
   `http://localhost:3000`.
 - El código de UI no accede a Drizzle, MariaDB ni MinIO directamente.
 - Éxito: `{ data: T }` o `{ data: T[], pagination: Pagination }`.
+- Los listados requieren `{ limit, offset, total }` dentro de `pagination`.
 - Error: `{ error: { code: string, message: string, details?: unknown } }`.
 
 ## 2. Tipos consumidos
@@ -54,17 +55,23 @@ type Annotation = {
 ```
 
 Los schemas ejecutables viven en `src/client/schemas/api.ts` y sus tipos se infieren
-con `z.infer` en `src/client/types/api.ts`. En Fase 1 se usarán para validar cada
-respuesta externa antes de entregarla a los componentes.
+con `z.infer` en `src/client/types/api.ts`. También contiene los contratos de entrada
+que debe validar el navegador. Se mantienen separados de los schemas de persistencia
+del servidor para evitar incluir Drizzle, MariaDB o MinIO en el bundle del frontend.
 
 ## 3. Necesidades por pantalla
+
+El cliente validado está implementado en `src/client/lib/api-client.ts`. Las pantallas
+de bandeja, carga y anotación lo usan directamente. El dashboard conserva datos
+simulados porque sus métricas pertenecen a Fase 2.
 
 | Pantalla | Operación | Endpoint | Estado |
 | :------- | :-------- | :------- | :----- |
 | Bandeja | listar imágenes | `GET /api/images?limit=&offset=` | Disponible |
 | Bandeja | cambiar estado | `PATCH /api/images/:id` | Disponible |
-| Carga | enviar archivo binario | `POST /api/images/upload` (`multipart/form-data`) | **Pendiente de acordar** |
+| Carga | enviar archivo binario | `POST /api/images/upload` (`multipart/form-data`, campo `file`) | Disponible |
 | Anotación | obtener imagen | `GET /api/images/:id` | Disponible |
+| Anotación | mostrar binario | `GET /api/images/:id/file` | Disponible |
 | Anotación | listar categorías | `GET /api/categories` | Disponible |
 | Anotación | listar cajas | `GET /api/annotations?imageId=:id` | Disponible |
 | Anotación | crear caja | `POST /api/annotations` | Disponible |
@@ -135,24 +142,28 @@ El servidor repite la validación porque el cliente no es una frontera confiable
 | `CATEGORY_NOT_FOUND` | recargar categorías y solicitar otra selección |
 | `NOT_FOUND` | volver a la bandeja si la imagen ya no existe |
 | `CATEGORY_IN_USE` | explicar que la categoría está asociada a cajas |
+| `NO_FILE` | pedir que se seleccione un archivo antes de cargar |
+| `INVALID_UPLOAD` | mostrar el error de tipo o tamaño devuelto por el servidor |
+| `UNREADABLE_IMAGE` | explicar que el contenido no representa una imagen legible |
+| `IMAGE_FILE_MISSING` | informar que el registro existe pero el archivo no está disponible |
 | `INTERNAL` | informar que no se pudo completar y permitir reintento |
 
-## 7. Acuerdo pendiente para Sync 2
+## 7. Acuerdos cerrados para Sync 2
 
-El contrato actual no define la carga binaria. Rol 2 y Rol 3 deben cerrar antes de
-Fase 1:
+Rol 2 implementó la carga individual en `POST /api/images/upload` con
+`multipart/form-data`, campo `file`. Acepta JPEG, PNG o WebP de hasta 10 MB y responde
+`201 { data: Image }`. Los errores publicados son `NO_FILE`, `INVALID_UPLOAD` y
+`UNREADABLE_IMAGE`.
 
-1. nombre definitivo de `POST /api/images/upload`;
-2. nombre del campo multipart (`file` propuesto);
-3. si acepta uno o varios archivos;
-4. forma de reportar progreso;
-5. si la respuesta devuelve una URL temporal o un endpoint para visualizar la imagen;
-6. códigos para MIME inválido, exceso de 10 MB y fallo de MinIO.
+La imagen se muestra mediante `GET /api/images/:id/file`. El navegador nunca usa
+`storagePath`: esa propiedad continúa siendo la llave interna de MinIO. La API sirve
+el binario con `Content-Type`, `Content-Length` y `Cache-Control: private,
+max-age=3600`.
 
-Mientras esto no se acuerde, la pantalla de carga permanece explícitamente en modo
-demostración y no simula una persistencia inexistente.
+`GET /api/images`, `GET /api/categories` y `GET /api/annotations` incluyen un `total`
+obligatorio. En anotaciones, el conteo respeta el filtro `imageId`.
 
-También debe cerrarse una discrepancia menor de paginación: el contrato contempla un
-conteo `total`, pero las rutas actuales devuelven únicamente `limit` y `offset`. El
-schema del cliente acepta temporalmente `total` como opcional hasta que Rol 2 defina
-la respuesta definitiva.
+La integración se comprobó localmente con MariaDB y MinIO: carga multipart, lectura
+del archivo, creación de una caja, transición de estado, actualización y consulta
+posterior. Falta repetir el recorrido completo mediante interacción manual en el
+navegador antes de solicitar el pull request.

@@ -58,28 +58,28 @@ para metadatos relacionales, y MinIO (S3-compatible) para los archivos binarios 
 
 ## Cómo levantar el proyecto
 
-La Fase 0 del frontend usa Vite en `http://localhost:5173` y redirige las rutas
+El frontend usa Vite en `http://localhost:5173` y redirige las rutas
 `/api` al servidor Hono en `http://localhost:3000`.
 
 ```bash
 npm run dev              # levanta API (:3000) y frontend (:5173)
 npm run dev:api          # levanta solo la API
-npm run dev:web          # levanta solo el frontend con datos simulados
+npm run dev:web          # levanta solo Vite; bandeja, carga y anotación requieren la API
 npm run typecheck        # verifica servidor y frontend con TypeScript
 npm run build            # compila servidor y genera dist/client
 npm run db:migrate       # (Fase 1) aplica las migraciones versionadas de Drizzle
 npm run db:seed          # (Fase 1) carga categorías e imágenes de ejemplo (idempotente)
 ```
 
-> En Fase 0 las pantallas y el canvas usan datos simulados identificados en la UI.
-> La carga multipart y la persistencia de anotaciones se conectan en Fase 1.
+> La bandeja, la carga y el canvas consumen la API real. El dashboard conserva datos
+> simulados identificados en la UI hasta que sus endpoints se implementen en Fase 2.
 
 ### Avance de Fase 1 — Rol 3
 
-La rama de Fase 1 ya incluye creación, movimiento y redimensionamiento de cajas en
-memoria, selección de categoría, validación compartida de archivos y un cliente HTTP
-con respuestas validadas mediante Zod. La persistencia permanece desactivada hasta
-que se cierre el contrato multipart y la visualización de objetos MinIO con Rol 2.
+La rama de Fase 1 incluye carga multipart con feedback, bandeja paginada, categorías
+reales y creación, movimiento y redimensionamiento persistentes. El canvas muestra el
+binario mediante `GET /api/images/:id/file`; nunca usa directamente la llave interna
+de MinIO. Las respuestas externas se validan con Zod antes de llegar a la UI.
 
 Consulta [`docs/frontend-phase-1-status.md`](docs/frontend-phase-1-status.md) para
 ver la evidencia, las pruebas y los puntos de integración pendientes.
@@ -95,12 +95,12 @@ ver la evidencia, las pruebas y los puntos de integración pendientes.
 │   ├── frontend-flow.md   # flujo, wireframes y estados de las pantallas
 │   └── frontend-api-contract.md # contrato consumido por el frontend
 ├── features/
-│   └── annotation-canvas.feature # escenarios del canvas del Rol 3
+│   └── annotation-canvas.feature # escenarios persistentes del canvas del Rol 3
 ├── src/
-│   ├── client/            # aplicación React y prototipo de anotación
+│   ├── client/            # aplicación React y portal de anotación
 │   ├── db/
 │   │   ├── index.ts       # cliente Drizzle → MariaDB (Fase 1)
-│   │   ├── schema.ts      # esquema Drizzle (borrador Sync 1)
+│   │   ├── schema.ts      # esquema Drizzle final
 │   │   └── seed.ts        # seeder idempotente (Fase 1)
 │   └── storage/
 │       └── minio.ts       # cliente MinIO

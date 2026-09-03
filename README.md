@@ -84,6 +84,13 @@ de MinIO. Las respuestas externas se validan con Zod antes de llegar a la UI.
 Consulta [`docs/frontend-phase-1-status.md`](docs/frontend-phase-1-status.md) para
 ver la evidencia, las pruebas y los puntos de integración pendientes.
 
+### Avance de Fase 2 — Rol 3
+
+La rama de Fase 2 agrega finalizar y avanzar, zoom, borrado y deshacer persistentes,
+búsqueda/filtros de servidor y dashboard con métricas reales. Consulta
+[`docs/frontend-phase-2-status.md`](docs/frontend-phase-2-status.md) para conocer la
+verificación y la dependencia temporal con la rama de Fase 2 del Rol 2.
+
 ## Estructura del proyecto
 
 ```

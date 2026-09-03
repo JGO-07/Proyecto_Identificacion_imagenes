@@ -3,8 +3,10 @@ import { ZodError } from 'zod';
 import { AppError } from './errors.js';
 import { annotationsRoutes } from './routes/annotations.js';
 import { categoriesRoutes } from './routes/categories.js';
+import { dashboardRoutes } from './routes/dashboard.js';
 import { healthRoutes } from './routes/health.js';
 import { imagesRoutes } from './routes/images.js';
+import { searchRoutes } from './routes/search.js';
 
 /**
  * Esqueleto de la API. Solo ensambla capas HTTP (routing + formato de
@@ -17,6 +19,8 @@ app.route('/health', healthRoutes);
 app.route('/api/categories', categoriesRoutes);
 app.route('/api/images', imagesRoutes);
 app.route('/api/annotations', annotationsRoutes);
+app.route('/api/search', searchRoutes);
+app.route('/api/dashboard', dashboardRoutes);
 
 app.notFound((c) =>
   c.json({ error: { code: 'NOT_FOUND', message: 'Recurso no encontrado' } }, 404),

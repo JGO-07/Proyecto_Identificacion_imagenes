@@ -13,7 +13,7 @@ Los listados devuelven `{ "data": [...], "pagination": { "limit", "offset", "tot
 | 200 | Lectura o actualización correcta |
 | 201 | Recurso creado |
 | 204 | Borrado correcto (sin cuerpo) |
-| 400 | JSON inválido (`INVALID_JSON`), fallo de validación Zod (`VALIDATION_ERROR`) o archivo ausente (`NO_FILE`) |
+| 400 | JSON inválido (`INVALID_JSON`), validación Zod (`VALIDATION_ERROR`), archivo ausente (`NO_FILE`) o búsqueda mal formada (`INVALID_SEARCH_QUERY`) |
 | 404 | Recurso inexistente (`NOT_FOUND`) |
 | 409 | Conflicto de integridad (`CATEGORY_IN_USE`, `CATEGORY_NAME_TAKEN`) |
 | 422 | Regla de negocio incumplida (`BBOX_OUT_OF_BOUNDS`, `CATEGORY_NOT_FOUND`, `INVALID_UPLOAD`, `UNREADABLE_IMAGE`, `IMAGE_FILE_MISSING`) |
@@ -76,13 +76,41 @@ Los listados devuelven `{ "data": [...], "pagination": { "limit", "offset", "tot
 `Annotation = { id, imageId, categoryId, x, y, width, height, area, isCrowd, createdAt, updatedAt }`.
 `area` es siempre `width * height` calculada en el servidor (RN-03).
 
+## Filtros de imágenes — `GET /api/images` (RN-07)
+
+`GET /api/images` acepta, además de `limit`/`offset`:
+
+| Filtro | Valores | Efecto |
+| :----- | :------ | :----- |
+| `status` | `pending` \| `in_progress` \| `completed` | `WHERE images.status = ?` |
+| `categoryId` | entero > 0 | `WHERE EXISTS (…annotations con esa categoría…)` |
+| `from` | fecha ISO | `WHERE images.created_at >= ?` |
+| `to` | fecha ISO | `WHERE images.created_at <= ?` |
+
+Se combinan con AND, resueltos en SQL. `pagination.total` refleja el conteo con
+los mismos filtros aplicados. `status` inválido → `400 VALIDATION_ERROR`.
+
+## Búsqueda — `/api/search` (RN-06)
+
+| Método | Ruta | Entrada | Salida |
+| :----- | :--- | :------ | :----- |
+| GET | `/` | query: `q` (ej. `car AND person` / `car OR dog`), `limit`, `offset` | `{ data: Image[], pagination: { limit, offset, total }, query: { operator, terms } }` · 400 `VALIDATION_ERROR` (sin `q`) · 400 `INVALID_SEARCH_QUERY` (mezcla AND/OR, término vacío, > 10 términos) |
+
+`AND` → imágenes con anotaciones de **todas** las clases; `OR` → de **alguna**.
+Resuelto en SQL (subconsulta `GROUP BY ... HAVING COUNT(DISTINCT ...)`), no en memoria.
+
+## Dashboard — `/api/dashboard` (RN-04)
+
+| Método | Ruta | Salida |
+| :----- | :--- | :----- |
+| GET | `/metrics` | `{ data: { images: { total, byStatus: { pending, in_progress, completed }, progressPct }, annotations: { total }, objectsByCategory: [{ categoryId, name, color, count }] } }` |
+
+Todas las cifras se calculan con agregaciones SQL en cada petición; no hay valores fijos.
+
 ---
 
 ## Pendiente (Fase 2)
 
 | Método | Ruta | Descripción | Regla |
 | :----- | :--- | :---------- | :---- |
-| GET | `/api/dashboard/metrics` | Progreso global + objetos por clase, agregado en SQL | RN-04 |
-| GET | `/api/search` | `q=car AND person`, resuelto en SQL | RN-06 |
-| GET | `/api/images?category=&status=&from=&to=` | Filtros combinables paginados | RN-07 |
-| GET | `/api/export/coco` | Descarga del dataset completo en formato COCO | — |
+| GET | `/api/export/coco` | Descarga del dataset completo en formato COCO | — (Rol 1) |

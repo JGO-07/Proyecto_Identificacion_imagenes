@@ -3,10 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../services/categories.service.js');
 vi.mock('../services/images.service.js');
 vi.mock('../services/annotations.service.js');
+vi.mock('../services/search.service.js');
+vi.mock('../services/dashboard.service.js');
 
 import * as annotationsService from '../services/annotations.service.js';
 import * as categoriesService from '../services/categories.service.js';
+import * as dashboardService from '../services/dashboard.service.js';
 import * as imagesService from '../services/images.service.js';
+import * as searchService from '../services/search.service.js';
 import { app } from './app.js';
 import { AppError } from './errors.js';
 
@@ -238,6 +242,35 @@ describe('imágenes', () => {
     expect(body.pagination).toEqual({ limit: 20, offset: 0, total: 1 });
   });
 
+  it('GET /api/images con filtros combinados -> los pasa parseados al servicio (RN-07)', async () => {
+    vi.mocked(imagesService.listImages).mockResolvedValue([]);
+    vi.mocked(imagesService.countImages).mockResolvedValue(0);
+    const res = await app.request(
+      '/api/images?status=completed&categoryId=3&from=2026-01-01&to=2026-02-01&limit=10&offset=10',
+    );
+    expect(res.status).toBe(200);
+    expect(imagesService.listImages).toHaveBeenCalledWith({
+      status: 'completed',
+      categoryId: 3,
+      from: new Date('2026-01-01'),
+      to: new Date('2026-02-01'),
+      limit: 10,
+      offset: 10,
+    });
+    expect(imagesService.countImages).toHaveBeenCalledWith({
+      status: 'completed',
+      categoryId: 3,
+      from: new Date('2026-01-01'),
+      to: new Date('2026-02-01'),
+    });
+  });
+
+  it('GET /api/images con status inválido -> 400 (RN-07)', async () => {
+    const res = await app.request('/api/images?status=terminada');
+    expect(res.status).toBe(400);
+    expect(imagesService.listImages).not.toHaveBeenCalled();
+  });
+
   it('GET /api/images/:id/file -> 200 con el binario y su Content-Type', async () => {
     const { Readable } = await import('node:stream');
     vi.mocked(imagesService.getImageFile).mockResolvedValue({
@@ -300,6 +333,54 @@ describe('imágenes', () => {
     const res = await app.request('/api/images/upload', { method: 'POST', body: form });
     expect(res.status).toBe(422);
     expect((await res.json()).error.code).toBe('INVALID_UPLOAD');
+  });
+});
+
+describe('GET /api/search (RN-06)', () => {
+  it('200 con q válido; pasa el árbol parseado al servicio', async () => {
+    vi.mocked(searchService.searchImages).mockResolvedValue({ data: [], total: 0 });
+    const res = await app.request('/api/search?q=car%20AND%20person&limit=5');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.pagination).toEqual({ limit: 5, offset: 0, total: 0 });
+    expect(body.query).toEqual({ operator: 'AND', terms: ['car', 'person'] });
+    expect(searchService.searchImages).toHaveBeenCalledWith(
+      { operator: 'AND', terms: ['car', 'person'] },
+      { limit: 5, offset: 0 },
+    );
+  });
+
+  it('400 VALIDATION_ERROR si falta q', async () => {
+    const res = await app.request('/api/search');
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
+    expect(searchService.searchImages).not.toHaveBeenCalled();
+  });
+
+  it('400 INVALID_SEARCH_QUERY si se mezclan AND y OR', async () => {
+    const res = await app.request('/api/search?q=car%20AND%20person%20OR%20dog');
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.code).toBe('INVALID_SEARCH_QUERY');
+    expect(searchService.searchImages).not.toHaveBeenCalled();
+  });
+});
+
+describe('GET /api/dashboard/metrics (RN-04)', () => {
+  it('200 con las métricas del servicio', async () => {
+    vi.mocked(dashboardService.getDashboardMetrics).mockResolvedValue({
+      images: {
+        total: 4,
+        byStatus: { pending: 2, in_progress: 1, completed: 1 },
+        progressPct: 25,
+      },
+      annotations: { total: 7 },
+      objectsByCategory: [{ categoryId: 1, name: 'car', color: '#EF4444', count: 5 }],
+    });
+    const res = await app.request('/api/dashboard/metrics');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.images.progressPct).toBe(25);
+    expect(body.data.objectsByCategory).toHaveLength(1);
   });
 });
 

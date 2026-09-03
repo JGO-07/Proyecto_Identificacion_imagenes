@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { IMAGE_STATUSES } from '../db/types.js';
+import { paginationSchema } from './common.js';
 import { imageInsertSchema } from './entities.js';
 
 /** Tipos MIME aceptados para carga de imágenes (RN-08). */
@@ -26,6 +27,18 @@ export const imageUpdateSchema = z.object({
   status: z.enum(IMAGE_STATUSES),
 });
 export type ImageUpdate = z.infer<typeof imageUpdateSchema>;
+
+/**
+ * RN-07: query de `GET /api/images` con filtros combinables (clase, estado,
+ * rango de fechas de creación) y paginación.
+ */
+export const imageFilterQuerySchema = paginationSchema.extend({
+  status: z.enum(IMAGE_STATUSES).optional(),
+  categoryId: z.coerce.number().int().positive().optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+});
+export type ImageFilterQuery = z.infer<typeof imageFilterQuerySchema>;
 
 /** Validación del archivo recibido en la carga, previa a subir a MinIO (RN-08). */
 export const uploadFileSchema = z.object({

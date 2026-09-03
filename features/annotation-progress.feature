@@ -1,7 +1,6 @@
-# SPEC-DASH-01 · RN-04 — Progreso de anotación (dashboard, Fase 2).
+# SPEC-DASH-01 · RN-04 — Progreso de anotación (métricas del dashboard).
 # language: es
 
-@wip
 Característica: Progreso de anotación
   Como responsable del proyecto
   Quiero ver el avance real calculado desde la base de datos

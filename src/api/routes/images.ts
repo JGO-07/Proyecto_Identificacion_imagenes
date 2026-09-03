@@ -1,7 +1,11 @@
 import { Readable } from 'node:stream';
 import { Hono } from 'hono';
-import { idParamSchema, paginationSchema } from '../../schemas/common.js';
-import { imageCreateSchema, imageUpdateSchema } from '../../schemas/image.js';
+import { idParamSchema } from '../../schemas/common.js';
+import {
+  imageCreateSchema,
+  imageFilterQuerySchema,
+  imageUpdateSchema,
+} from '../../schemas/image.js';
 import * as service from '../../services/images.service.js';
 import { AppError, notFound } from '../errors.js';
 import { readJson } from '../http.js';
@@ -29,9 +33,13 @@ imagesRoutes.post('/upload', async (c) => {
 });
 
 imagesRoutes.get('/', async (c) => {
-  const query = paginationSchema.parse(c.req.query());
-  const [data, total] = await Promise.all([service.listImages(query), service.countImages()]);
-  return c.json({ data, pagination: { ...query, total } });
+  const query = imageFilterQuerySchema.parse(c.req.query());
+  const { limit, offset, ...filters } = query;
+  const [data, total] = await Promise.all([
+    service.listImages(query),
+    service.countImages(filters),
+  ]);
+  return c.json({ data, pagination: { limit, offset, total } });
 });
 
 imagesRoutes.get('/:id', async (c) => {

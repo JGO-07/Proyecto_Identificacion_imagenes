@@ -128,4 +128,28 @@ describe('apiClient', () => {
   it('construye la URL pública del archivo sin exponer storagePath', () => {
     expect(apiClient.images.fileUrl(27)).toBe('/api/images/27/file');
   });
+
+  it('marca una imagen como completada antes de avanzar', async () => {
+    const completedImage = {
+      ...validImage,
+      status: 'completed',
+      updatedAt: '2026-09-03T08:00:00Z',
+    };
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: completedImage }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await apiClient.images.updateStatus(1, 'completed');
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/images/1', {
+      method: 'PATCH',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'completed' }),
+    });
+    expect(result.data.status).toBe('completed');
+  });
 });

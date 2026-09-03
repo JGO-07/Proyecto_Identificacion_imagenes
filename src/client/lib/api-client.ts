@@ -8,6 +8,7 @@ import {
   categoryListResponseSchema,
   imageListResponseSchema,
   imageResponseSchema,
+  uploadFileInputSchema,
 } from '../schemas/api.js';
 
 type AnnotationCreateInput = z.input<typeof annotationCreateInputSchema>;
@@ -50,7 +51,8 @@ async function readJson(response: Response): Promise<unknown> {
 
 async function request<T>(path: string, schema: z.ZodType<T>, init: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (init.body) {
+  const isMultipart = typeof FormData !== 'undefined' && init.body instanceof FormData;
+  if (init.body && !isMultipart) {
     headers['Content-Type'] = 'application/json';
   }
 
@@ -103,6 +105,18 @@ export const apiClient = {
     },
     get(id: number) {
       return request(`/api/images/${id}`, imageResponseSchema);
+    },
+    fileUrl(id: number) {
+      return `/api/images/${id}/file`;
+    },
+    upload(file: File) {
+      uploadFileInputSchema.parse({ mimeType: file.type, sizeBytes: file.size });
+      const form = new FormData();
+      form.append('file', file);
+      return request('/api/images/upload', imageResponseSchema, {
+        method: 'POST',
+        body: form,
+      });
     },
   },
   categories: {

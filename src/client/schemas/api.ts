@@ -77,7 +77,7 @@ export const apiAnnotationSchema = z.object({
 export const paginationSchema = z.object({
   limit: z.number().int().positive(),
   offset: z.number().int().min(0),
-  total: z.number().int().min(0).optional(),
+  total: z.number().int().min(0),
 });
 
 export const apiErrorSchema = z.object({

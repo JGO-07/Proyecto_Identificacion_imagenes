@@ -11,10 +11,10 @@ archivo `.feature` en Gherkin.
 | RN-01 Validez de una anotación | SPEC-ANOT-01 | `features/annotation-validity.feature` | Implementada + probada |
 | RN-02 Ninguna caja sin clase válida | SPEC-ANOT-02 | `features/annotation-validity.feature` | Implementada + probada |
 | RN-03 Cálculo del área | SPEC-ANOT-03 | `features/annotation-validity.feature` | Implementada + probada |
-| RN-04 Cálculo del progreso de anotación | SPEC-DASH-01 | `features/annotation-progress.feature` | `@wip` (Fase 2) |
+| RN-04 Cálculo del progreso de anotación | SPEC-DASH-01 | `features/annotation-progress.feature` | Implementada + probada |
 | RN-05 Estados de una imagen | SPEC-IMG-01 | `features/image-status.feature` | Implementada + probada |
-| RN-06 Operadores de búsqueda (AND / OR) en SQL | SPEC-SEARCH-01 | `features/search-operators.feature` | `@wip` (Fase 2) |
-| RN-07 Filtros combinables con paginación | SPEC-SEARCH-02 | `features/search-operators.feature` | `@wip` (Fase 2) |
+| RN-06 Operadores de búsqueda (AND / OR) en SQL | SPEC-SEARCH-01 | `features/search-operators.feature` | Implementada + probada |
+| RN-07 Filtros combinables con paginación | SPEC-SEARCH-02 | `features/search-operators.feature` | Implementada + probada |
 | RN-08 Validación de carga de imágenes | SPEC-IMG-02 | `features/image-upload.feature` | Implementada + probada |
 
 ---
@@ -51,7 +51,11 @@ imágenes`, expresado como porcentaje. El desglose por clase cuenta anotaciones
 agrupadas por `category_id`. Todo se calcula con agregaciones SQL, nunca con
 valores fijos.
 **Motivo.** El dashboard debe reflejar el estado real de la base en cada consulta.
-**Implementación.** Fase 2 (`dashboard.service.ts`, pendiente).
+**Implementación.** `src/services/dashboard.service.ts` (`GET /api/dashboard/metrics`):
+`buildImageStatusCounts` (`GROUP BY status`), `buildAnnotationTotal` (`COUNT(*)`) y
+`buildObjectsByCategory` (`JOIN` + `GROUP BY` categoría). `computeProgressPct` es una
+función pura. Probado en `src/services/dashboard.service.spec.ts` inspeccionando el SQL
+generado (`toSQL()`).
 
 ## RN-05 — Estados de una imagen
 **Regla.** `status ∈ {pending, in_progress, completed}`. Transiciones válidas:
@@ -68,18 +72,25 @@ en `createAnnotation` (`src/services/annotations.service.ts`). Probada en
 **Regla.** Una búsqueda como `car AND person` devuelve las imágenes que tienen al
 menos una anotación de categoría `car` **y** al menos una de `person`. `OR`
 devuelve las que tienen alguna de las dos. La resolución es 100% en SQL
-(`EXISTS` / `GROUP BY ... HAVING COUNT(DISTINCT category_id) = N`), nunca trayendo
-todo a memoria y filtrando con `.filter()`.
+(`GROUP BY annotations.image_id ... HAVING COUNT(DISTINCT categories.name) = N` para
+AND; sin `HAVING` para OR), nunca trayendo todo a memoria y filtrando con `.filter()`.
 **Motivo.** Requisito explícito de la rúbrica.
-**Implementación.** Fase 2 (`search.service.ts`, pendiente).
+**Implementación.** `src/lib/search-query.ts` (`parseSearchQuery`, función pura: no
+mezcla AND/OR, límite de términos) + `src/services/search.service.ts`
+(`buildImageSearch` / `buildImageSearchCount`, subconsulta `IN (SELECT ...)`) →
+`GET /api/search`. Probado en `src/lib/search-query.spec.ts` y
+`src/services/search.service.spec.ts` (verifica el SQL con `toSQL()`).
 
 ## RN-07 — Filtros combinables con paginación
 **Regla.** Los filtros por clase, `status` y rango de fechas (`created_at`) se
 combinan con AND. El resultado se pagina con `limit`/`offset`; el conteo total
 que acompaña la respuesta es consistente con los filtros aplicados.
 **Motivo.** Requisito explícito de la rúbrica.
-**Implementación.** Fase 2 (pendiente). Paginación base ya disponible en
-`src/schemas/common.ts`.
+**Implementación.** `imageFilterQuerySchema` (`src/schemas/image.ts`) +
+`buildFilteredImages` / `buildFilteredImagesCount` (`src/services/images.service.ts`):
+`WHERE` combinado con `and(...)`, filtro de clase vía `EXISTS` sobre `annotations`, y
+la consulta de conteo usa el MISMO `WHERE`. `GET /api/images` devuelve
+`pagination: { limit, offset, total }`. Probado en `src/services/images.service.spec.ts`.
 
 ## RN-08 — Validación de carga de imágenes
 **Regla.** Solo se aceptan archivos `image/jpeg`, `image/png`, `image/webp` de

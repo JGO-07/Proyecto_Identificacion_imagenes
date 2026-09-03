@@ -23,8 +23,8 @@ Regla de negocio (RN-xx)  ->  SPEC-xx  ->  archivo .feature (Given/When/Then)  -
 | `annotation-validity.feature` | RN-01, RN-02, RN-03 | Activo |
 | `image-upload.feature` | RN-08 | Activo |
 | `image-status.feature` | RN-05 | Activo |
-| `annotation-progress.feature` | RN-04 | `@wip` (dashboard, Fase 2) |
-| `search-operators.feature` | RN-06, RN-07 | `@wip` (búsqueda, Fase 2) |
+| `annotation-progress.feature` | RN-04 | Activo |
+| `search-operators.feature` | RN-06, RN-07 | Activo |
 | `annotation-canvas.feature` | SPEC-UI-ANOT-01 (Rol 3, Fase 0) | Activo |
 
 ## Pruebas
@@ -35,6 +35,9 @@ Reglas cubiertas por pruebas automatizadas (`npm test`):
 | :---- | :----- |
 | RN-01, RN-03 (geometría) | `src/lib/geometry.spec.ts` |
 | RN-01, RN-02, RN-03 (validación de forma) | `src/schemas/annotation.spec.ts` |
+| RN-04 (métricas del dashboard en SQL) | `src/services/dashboard.service.spec.ts` |
 | RN-05 (transición de estado) | `src/lib/image-status.spec.ts` |
-| RN-08 + contratos HTTP de todos los endpoints CRUD | `src/api/api.spec.ts` |
+| RN-06 (parser de operadores + búsqueda en SQL) | `src/lib/search-query.spec.ts`, `src/services/search.service.spec.ts` |
+| RN-07 (filtros combinables + conteo total en SQL) | `src/services/images.service.spec.ts` |
+| RN-08 + contratos HTTP de todos los endpoints | `src/api/api.spec.ts` |
 | Esquemas Zod generados desde Drizzle | `src/schemas/entities.spec.ts` |

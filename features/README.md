@@ -41,3 +41,10 @@ Reglas cubiertas por pruebas automatizadas (`npm test`):
 | RN-07 (filtros combinables + conteo total en SQL) | `src/services/images.service.spec.ts` |
 | RN-08 + contratos HTTP de todos los endpoints | `src/api/api.spec.ts` |
 | Esquemas Zod generados desde Drizzle | `src/schemas/entities.spec.ts` |
+
+Pruebas de integración contra MariaDB real (`npm run test:db`, requiere
+`docker compose up -d`; se saltan solas si la base no responde):
+
+| Regla | Prueba |
+| :---- | :----- |
+| RN-04 (las métricas cambian al agregar anotaciones / marcar completed) | `src/services/dashboard.integration.spec.ts` |

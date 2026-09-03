@@ -54,8 +54,10 @@ valores fijos.
 **Implementación.** `src/services/dashboard.service.ts` (`GET /api/dashboard/metrics`):
 `buildImageStatusCounts` (`GROUP BY status`), `buildAnnotationTotal` (`COUNT(*)`) y
 `buildObjectsByCategory` (`JOIN` + `GROUP BY` categoría). `computeProgressPct` es una
-función pura. Probado en `src/services/dashboard.service.spec.ts` inspeccionando el SQL
-generado (`toSQL()`).
+función pura. Probado en `src/services/dashboard.service.spec.ts` (inspecciona el SQL
+generado con `toSQL()`) y en `src/services/dashboard.integration.spec.ts` (contra
+MariaDB real: las métricas suben al insertar anotaciones y al marcar una imagen como
+`completed` — `npm run test:db`).
 
 ## RN-05 — Estados de una imagen
 **Regla.** `status ∈ {pending, in_progress, completed}`. Transiciones válidas:

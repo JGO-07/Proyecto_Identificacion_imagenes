@@ -24,6 +24,7 @@ interface AnnotationCanvasProps {
   isBusy?: boolean;
   mode: CanvasTool;
   selectedId: number | null;
+  zoom?: number;
   onChange: (id: number, changes: AnnotationGeometryChanges) => void;
   onCreate: (box: BoundingBox) => void;
   onSelect: (id: number | null) => void;
@@ -157,6 +158,7 @@ export function AnnotationCanvas({
   onChange,
   onCreate,
   onSelect,
+  zoom = 1,
 }: AnnotationCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(960);
@@ -202,7 +204,8 @@ export function AnnotationCanvas({
     };
   }, [imageUrl]);
 
-  const scale = containerWidth / imageWidth;
+  const scale = (containerWidth / imageWidth) * zoom;
+  const stageWidth = imageWidth * scale;
   const stageHeight = imageHeight * scale;
   const imageSize = { width: imageWidth, height: imageHeight };
 
@@ -281,7 +284,7 @@ export function AnnotationCanvas({
         onTouchStart={handlePointerDown}
         scaleX={scale}
         scaleY={scale}
-        width={containerWidth}
+        width={stageWidth}
       >
         <Layer>
           <Rect fill="#252D36" height={imageHeight} listening={false} width={imageWidth} />

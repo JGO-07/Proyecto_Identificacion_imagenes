@@ -152,4 +152,51 @@ describe('apiClient', () => {
     });
     expect(result.data.status).toBe('completed');
   });
+
+  it('envía búsqueda booleana paginada y valida su interpretación', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [validImage],
+          pagination: { limit: 12, offset: 0, total: 1 },
+          query: { operator: 'AND', terms: ['car', 'person'] },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await apiClient.search.list('car AND person', { limit: 12 });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/search?limit=12&offset=0&q=car+AND+person',
+      expect.any(Object),
+    );
+    expect(result.query).toEqual({ operator: 'AND', terms: ['car', 'person'] });
+  });
+
+  it('valida métricas agregadas del dashboard', async () => {
+    const metrics = {
+      images: {
+        total: 9,
+        byStatus: { pending: 4, in_progress: 4, completed: 1 },
+        progressPct: 11.11,
+      },
+      annotations: { total: 7 },
+      objectsByCategory: [{ categoryId: 1, name: 'car', color: '#EF4444', count: 2 }],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ data: metrics }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+
+    const result = await apiClient.dashboard.metrics();
+
+    expect(result.data).toEqual(metrics);
+  });
 });

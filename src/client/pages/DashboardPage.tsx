@@ -1,12 +1,77 @@
-import { DemoBadge } from '../components/DemoBadge.js';
-import { useAnnotationStore } from '../store/annotation-store.js';
+import { useCallback, useEffect, useState } from 'react';
+import { IntegrationBadge } from '../components/IntegrationBadge.js';
+import { ApiClientError, apiClient } from '../lib/api-client.js';
+
+type DashboardMetrics = Awaited<ReturnType<typeof apiClient.dashboard.metrics>>['data'];
+
+function errorMessage(cause: unknown) {
+  return cause instanceof ApiClientError
+    ? cause.message
+    : 'No se pudieron consultar las métricas del proyecto.';
+}
 
 export function DashboardPage() {
-  const images = useAnnotationStore((state) => state.images);
-  const categories = useAnnotationStore((state) => state.categories);
-  const annotations = useAnnotationStore((state) => state.annotations);
-  const completed = images.filter((image) => image.status === 'completed').length;
-  const progress = images.length === 0 ? 0 : Math.round((completed / images.length) * 100);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadMetrics = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiClient.dashboard.metrics();
+      setMetrics(response.data);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadMetrics();
+  }, [loadMetrics]);
+
+  if (loading) {
+    return (
+      <section className="async-state">
+        <span className="loading-spinner" />
+        <h1>Cargando métricas…</h1>
+      </section>
+    );
+  }
+
+  if (error || !metrics) {
+    return (
+      <section className="async-state async-state-error" role="alert">
+        <span>!</span>
+        <h1>Dashboard no disponible</h1>
+        <p>{error}</p>
+        <button
+          className="button button-secondary"
+          onClick={() => void loadMetrics()}
+          type="button"
+        >
+          Reintentar
+        </button>
+      </section>
+    );
+  }
+
+  const maximumCategoryCount = Math.max(1, ...metrics.objectsByCategory.map((item) => item.count));
+  const statusRows = [
+    { label: 'Pendientes', count: metrics.images.byStatus.pending, className: 'status-pending' },
+    {
+      label: 'En progreso',
+      count: metrics.images.byStatus.in_progress,
+      className: 'status-progress',
+    },
+    {
+      label: 'Completadas',
+      count: metrics.images.byStatus.completed,
+      className: 'status-completed',
+    },
+  ];
 
   return (
     <div className="page-wrap">
@@ -14,47 +79,45 @@ export function DashboardPage() {
         <div>
           <span className="eyebrow">Resumen del proyecto</span>
           <h1>Dashboard</h1>
-          <p>Estructura preliminar de las métricas que se conectarán en Fase 2.</p>
+          <p>Métricas calculadas desde la base de datos.</p>
         </div>
-        <DemoBadge />
+        <IntegrationBadge />
       </section>
-
       <section aria-label="Indicadores principales" className="metrics-grid">
         <article className="metric-card metric-featured">
           <span>Progreso general</span>
-          <strong>{progress}%</strong>
+          <strong>{metrics.images.progressPct}%</strong>
           <div
-            aria-label={`${progress}% completado`}
+            aria-label={`${metrics.images.progressPct}% completado`}
             aria-valuemax={100}
             aria-valuemin={0}
-            aria-valuenow={progress}
+            aria-valuenow={metrics.images.progressPct}
             className="progress-track"
             role="progressbar"
             tabIndex={0}
           >
-            <span style={{ width: `${progress}%` }} />
+            <span style={{ width: `${metrics.images.progressPct}%` }} />
           </div>
           <small>
-            {completed} de {images.length} imágenes completadas
+            {metrics.images.byStatus.completed} de {metrics.images.total} imágenes completadas
           </small>
         </article>
         <article className="metric-card">
           <span>Imágenes</span>
-          <strong>{images.length}</strong>
-          <small>en el conjunto actual</small>
+          <strong>{metrics.images.total}</strong>
+          <small>en el proyecto</small>
         </article>
         <article className="metric-card">
           <span>Anotaciones</span>
-          <strong>{annotations.length}</strong>
+          <strong>{metrics.annotations.total}</strong>
           <small>bounding boxes registradas</small>
         </article>
         <article className="metric-card">
-          <span>Categorías</span>
-          <strong>{categories.length}</strong>
-          <small>clases disponibles</small>
+          <span>En progreso</span>
+          <strong>{metrics.images.byStatus.in_progress}</strong>
+          <small>{metrics.images.byStatus.pending} pendientes</small>
         </article>
       </section>
-
       <section className="dashboard-panels">
         <article className="panel">
           <div className="panel-heading">
@@ -62,58 +125,50 @@ export function DashboardPage() {
               <span className="eyebrow">Distribución</span>
               <h2>Objetos por clase</h2>
             </div>
-            <span className="panel-note">Vista preliminar</span>
+            <span className="panel-note">Datos reales</span>
           </div>
           <div className="category-bars">
-            {categories.map((category) => {
-              const count = annotations.filter(
-                (annotation) => annotation.categoryId === category.id,
-              ).length;
-              const width = annotations.length === 0 ? 0 : (count / annotations.length) * 100;
-              return (
-                <div className="category-bar-row" key={category.id}>
-                  <span className="legend-dot" style={{ background: category.color }} />
-                  <span>{category.name}</span>
-                  <div className="bar-track">
-                    <span style={{ background: category.color, width: `${width}%` }} />
-                  </div>
-                  <strong>{count}</strong>
+            {metrics.objectsByCategory.map((category) => (
+              <div className="category-bar-row" key={category.categoryId}>
+                <span className="legend-dot" style={{ background: category.color }} />
+                <span>{category.name}</span>
+                <div className="bar-track">
+                  <span
+                    style={{
+                      background: category.color,
+                      width: `${(category.count / maximumCategoryCount) * 100}%`,
+                    }}
+                  />
                 </div>
-              );
-            })}
+                <strong>{category.count}</strong>
+              </div>
+            ))}
           </div>
         </article>
-
-        <article className="panel next-steps-panel">
+        <article className="panel">
           <div className="panel-heading">
             <div>
-              <span className="eyebrow">Integración</span>
-              <h2>Próximos pasos</h2>
+              <span className="eyebrow">Estados</span>
+              <h2>Flujo de anotación</h2>
             </div>
           </div>
-          <ol className="steps-list">
-            <li className="done">
-              <span>1</span>
-              <div>
-                <strong>Estructura visual</strong>
-                <small>Componentes y navegación de Fase 0</small>
+          <div className="category-bars">
+            {statusRows.map((status) => (
+              <div className="category-bar-row" key={status.label}>
+                <span className={`legend-dot ${status.className}`} />
+                <span>{status.label}</span>
+                <div className="bar-track">
+                  <span
+                    className={status.className}
+                    style={{
+                      width: `${metrics.images.total ? (status.count / metrics.images.total) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
+                <strong>{status.count}</strong>
               </div>
-            </li>
-            <li>
-              <span>2</span>
-              <div>
-                <strong>Conectar métricas</strong>
-                <small>Esperando `/api/dashboard/metrics`</small>
-              </div>
-            </li>
-            <li>
-              <span>3</span>
-              <div>
-                <strong>Agregar búsqueda</strong>
-                <small>Filtros y operadores SQL en Fase 2</small>
-              </div>
-            </li>
-          </ol>
+            ))}
+          </div>
         </article>
       </section>
     </div>

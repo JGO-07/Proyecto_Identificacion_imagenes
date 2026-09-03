@@ -1,6 +1,6 @@
 import type Konva from 'konva';
 import { useEffect, useRef, useState } from 'react';
-import { Circle, Group, Layer, Line, Rect, Stage, Text, Transformer } from 'react-konva';
+import { Group, Image as KonvaImage, Layer, Rect, Stage, Text, Transformer } from 'react-konva';
 import {
   type BoundingBox,
   type Point,
@@ -10,16 +10,21 @@ import {
 import type { ApiAnnotation, ApiCategory } from '../types/api.js';
 
 export type CanvasTool = 'select' | 'draw';
+export type AnnotationGeometryChanges = Partial<
+  Pick<ApiAnnotation, 'x' | 'y' | 'width' | 'height'>
+>;
 
 interface AnnotationCanvasProps {
   annotations: ApiAnnotation[];
   categories: ApiCategory[];
   draftCategory: ApiCategory | undefined;
   imageHeight: number;
+  imageUrl: string;
   imageWidth: number;
+  isBusy?: boolean;
   mode: CanvasTool;
   selectedId: number | null;
-  onChange: (id: number, changes: Partial<ApiAnnotation>) => void;
+  onChange: (id: number, changes: AnnotationGeometryChanges) => void;
   onCreate: (box: BoundingBox) => void;
   onSelect: (id: number | null) => void;
 }
@@ -139,105 +144,14 @@ function BoxShape({
   );
 }
 
-function SceneBackdrop({ height, width }: { height: number; width: number }) {
-  const horizon = height * 0.58;
-
-  return (
-    <>
-      <Rect fill="#A9D3E8" height={height} width={width} />
-      <Circle fill="#F5C965" radius={height * 0.07} x={width * 0.86} y={height * 0.16} />
-      <Group opacity={0.92}>
-        <Rect fill="#73879A" height={height * 0.38} width={width * 0.18} x={0} y={height * 0.2} />
-        <Rect
-          fill="#596E82"
-          height={height * 0.48}
-          width={width * 0.19}
-          x={width * 0.16}
-          y={height * 0.1}
-        />
-        <Rect
-          fill="#8195A7"
-          height={height * 0.32}
-          width={width * 0.2}
-          x={width * 0.34}
-          y={height * 0.26}
-        />
-        <Rect
-          fill="#667B8E"
-          height={height * 0.42}
-          width={width * 0.18}
-          x={width * 0.69}
-          y={height * 0.16}
-        />
-        <Rect
-          fill="#8599A8"
-          height={height * 0.3}
-          width={width * 0.14}
-          x={width * 0.86}
-          y={height * 0.28}
-        />
-      </Group>
-      <Rect fill="#A8B0A7" height={height * 0.12} width={width} y={horizon} />
-      <Rect
-        fill="#46515B"
-        height={height - horizon - height * 0.08}
-        width={width}
-        y={horizon + height * 0.08}
-      />
-      <Line
-        dash={[width * 0.07, width * 0.045]}
-        points={[0, height * 0.84, width, height * 0.84]}
-        stroke="#F4E8C8"
-        strokeWidth={height * 0.012}
-      />
-      <Group x={width * 0.43} y={height * 0.62}>
-        <Rect
-          cornerRadius={height * 0.025}
-          fill="#E3E8EB"
-          height={height * 0.15}
-          width={width * 0.27}
-        />
-        <Rect
-          fill="#91B9CC"
-          height={height * 0.065}
-          width={width * 0.11}
-          x={width * 0.08}
-          y={height * 0.015}
-        />
-        <Circle fill="#25313A" radius={height * 0.035} x={width * 0.055} y={height * 0.15} />
-        <Circle fill="#25313A" radius={height * 0.035} x={width * 0.225} y={height * 0.15} />
-      </Group>
-      <Group x={width * 0.22} y={height * 0.42}>
-        <Circle fill="#D59B79" radius={height * 0.027} x={0} y={0} />
-        <Rect
-          cornerRadius={10}
-          fill="#E9C46A"
-          height={height * 0.19}
-          width={width * 0.045}
-          x={-width * 0.0225}
-          y={height * 0.03}
-        />
-        <Line
-          points={[0, height * 0.22, -width * 0.02, height * 0.33]}
-          stroke="#263642"
-          strokeWidth={height * 0.025}
-        />
-        <Line
-          points={[0, height * 0.22, width * 0.025, height * 0.33]}
-          stroke="#263642"
-          strokeWidth={height * 0.025}
-        />
-      </Group>
-    </>
-  );
-}
-
 export function AnnotationCanvas({
   annotations,
   categories,
   draftCategory,
   imageHeight,
+  imageUrl,
   imageWidth,
+  isBusy = false,
   mode,
   selectedId,
   onChange,
@@ -248,6 +162,8 @@ export function AnnotationCanvas({
   const [containerWidth, setContainerWidth] = useState(960);
   const [drawStart, setDrawStart] = useState<Point | null>(null);
   const [draftBox, setDraftBox] = useState<BoundingBox | null>(null);
+  const [backgroundImage, setBackgroundImage] = useState<HTMLImageElement | null>(null);
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -262,6 +178,30 @@ export function AnnotationCanvas({
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    const image = new window.Image();
+    setBackgroundImage(null);
+    setImageLoadFailed(false);
+    image.onload = () => {
+      if (active) {
+        setBackgroundImage(image);
+      }
+    };
+    image.onerror = () => {
+      if (active) {
+        setImageLoadFailed(true);
+      }
+    };
+    image.src = imageUrl;
+
+    return () => {
+      active = false;
+      image.onload = null;
+      image.onerror = null;
+    };
+  }, [imageUrl]);
+
   const scale = containerWidth / imageWidth;
   const stageHeight = imageHeight * scale;
   const imageSize = { width: imageWidth, height: imageHeight };
@@ -272,6 +212,10 @@ export function AnnotationCanvas({
   };
 
   const handlePointerDown = (event: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    if (!backgroundImage || isBusy) {
+      return;
+    }
+
     const stage = event.target.getStage();
     if (!stage) {
       return;
@@ -293,7 +237,7 @@ export function AnnotationCanvas({
   };
 
   const handlePointerMove = (event: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-    if (mode !== 'draw' || !drawStart) {
+    if (mode !== 'draw' || !drawStart || isBusy) {
       return;
     }
 
@@ -305,7 +249,7 @@ export function AnnotationCanvas({
   };
 
   const handlePointerUp = (event: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-    if (mode !== 'draw' || !drawStart) {
+    if (mode !== 'draw' || !drawStart || isBusy) {
       return;
     }
 
@@ -340,16 +284,33 @@ export function AnnotationCanvas({
         width={containerWidth}
       >
         <Layer>
-          <Group listening={false}>
-            <SceneBackdrop height={imageHeight} width={imageWidth} />
-          </Group>
+          <Rect fill="#252D36" height={imageHeight} listening={false} width={imageWidth} />
+          {backgroundImage ? (
+            <KonvaImage
+              height={imageHeight}
+              image={backgroundImage}
+              listening={false}
+              width={imageWidth}
+            />
+          ) : (
+            <Text
+              align="center"
+              fill={imageLoadFailed ? '#FCA5A5' : '#CBD5E1'}
+              fontSize={Math.max(18, imageWidth * 0.018)}
+              listening={false}
+              text={imageLoadFailed ? 'No se pudo cargar la imagen' : 'Cargando imagen…'}
+              verticalAlign="middle"
+              width={imageWidth}
+              height={imageHeight}
+            />
+          )}
           {annotations.map((annotation) => (
             <BoxShape
               annotation={annotation}
               category={categories.find((category) => category.id === annotation.categoryId)}
               imageHeight={imageHeight}
               imageWidth={imageWidth}
-              isInteractive={mode === 'select'}
+              isInteractive={mode === 'select' && !isBusy && Boolean(backgroundImage)}
               isSelected={annotation.id === selectedId}
               key={annotation.id}
               onChange={onChange}

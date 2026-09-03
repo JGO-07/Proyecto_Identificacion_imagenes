@@ -1,6 +1,7 @@
-import { type ChangeEvent, useRef, useState } from 'react';
+import { type ChangeEvent, type DragEvent, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { DemoBadge } from '../components/DemoBadge.js';
+import { IntegrationBadge } from '../components/IntegrationBadge.js';
+import { ApiClientError, apiClient } from '../lib/api-client.js';
 import { validateImageFile } from '../lib/file-validation.js';
 
 interface SelectionState {
@@ -11,7 +12,7 @@ interface SelectionState {
 
 const initialSelection: SelectionState = {
   file: null,
-  message: 'Selecciona un archivo para revisar su formato y tamaño.',
+  message: 'Selecciona o arrastra un archivo para revisar su formato y tamaño.',
   tone: 'neutral',
 };
 
@@ -19,11 +20,21 @@ function formatSize(bytes: number) {
   return `${(bytes / 1_000_000).toFixed(2)} MB`;
 }
 
+function uploadErrorMessage(cause: unknown) {
+  return cause instanceof ApiClientError
+    ? cause.message
+    : 'No se pudo subir la imagen. Comprueba la conexión con el servidor e inténtalo de nuevo.';
+}
+
 export function UploadPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [selection, setSelection] = useState<SelectionState>(initialSelection);
+  const [uploadedImageId, setUploadedImageId] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
-  const validateFile = (file: File | undefined) => {
+  const selectFile = (file: File | undefined) => {
+    setUploadedImageId(null);
     if (!file) {
       setSelection(initialSelection);
       return;
@@ -31,23 +42,56 @@ export function UploadPage() {
 
     const result = validateImageFile(file);
     if (!result.ok) {
-      setSelection({
-        file,
-        message: result.message,
-        tone: 'error',
-      });
+      setSelection({ file, message: result.message, tone: 'error' });
       return;
     }
 
     setSelection({
       file,
-      message: 'Archivo válido. Falta conectar el endpoint multipart del servidor.',
+      message: 'Archivo válido. Ya puedes enviarlo al almacenamiento del proyecto.',
       tone: 'success',
     });
   };
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    validateFile(event.target.files?.[0]);
+    selectFile(event.target.files?.[0]);
+  };
+
+  const handleDrop = (event: DragEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    setDragging(false);
+    selectFile(event.dataTransfer.files[0]);
+  };
+
+  const handleUpload = async () => {
+    if (!selection.file || selection.tone !== 'success' || uploadedImageId) {
+      return;
+    }
+
+    setUploading(true);
+    setSelection((current) => ({
+      ...current,
+      message: 'Subiendo la imagen y guardando sus metadatos…',
+      tone: 'neutral',
+    }));
+
+    try {
+      const response = await apiClient.images.upload(selection.file);
+      setUploadedImageId(response.data.id);
+      setSelection((current) => ({
+        ...current,
+        message: 'Imagen guardada correctamente. Ya puedes comenzar a anotarla.',
+        tone: 'success',
+      }));
+    } catch (cause) {
+      setSelection((current) => ({
+        ...current,
+        message: uploadErrorMessage(cause),
+        tone: 'error',
+      }));
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -56,19 +100,28 @@ export function UploadPage() {
         <div>
           <span className="eyebrow">Nuevo material</span>
           <h1>Cargar imágenes</h1>
-          <p>Prepara una imagen para incorporarla al proyecto de anotación.</p>
+          <p>Incorpora una imagen al proyecto y comienza a delimitar sus objetos.</p>
         </div>
-        <DemoBadge />
+        <IntegrationBadge />
       </section>
 
       <div className="upload-layout">
-        <section className="upload-card">
-          <button className="drop-zone" onClick={() => inputRef.current?.click()} type="button">
+        <section aria-busy={uploading} className="upload-card">
+          <button
+            className={`drop-zone${dragging ? ' dragging' : ''}`}
+            disabled={uploading}
+            onClick={() => inputRef.current?.click()}
+            onDragEnter={() => setDragging(true)}
+            onDragLeave={() => setDragging(false)}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={handleDrop}
+            type="button"
+          >
             <span aria-hidden="true" className="upload-symbol">
               ↑
             </span>
-            <strong>Selecciona una imagen</strong>
-            <span>o arrástrala aquí cuando se conecte la carga real</span>
+            <strong>Selecciona o arrastra una imagen</strong>
+            <span>Se validará antes de enviarla al servidor</span>
             <small>JPEG, PNG o WebP · máximo 10 MB</small>
           </button>
           <input
@@ -95,22 +148,22 @@ export function UploadPage() {
 
           <div className="form-actions">
             <Link className="button button-ghost" to="/images">
-              Cancelar
+              {uploadedImageId ? 'Volver a imágenes' : 'Cancelar'}
             </Link>
-            <button
-              className="button button-primary"
-              disabled={selection.tone !== 'success'}
-              onClick={() =>
-                setSelection({
-                  ...selection,
-                  message: 'Modo demostración: no se enviaron datos ni se creó una imagen.',
-                  tone: 'neutral',
-                })
-              }
-              type="button"
-            >
-              Preparar carga
-            </button>
+            {uploadedImageId ? (
+              <Link className="button button-primary" to={`/annotate/${uploadedImageId}`}>
+                Anotar imagen →
+              </Link>
+            ) : (
+              <button
+                className="button button-primary"
+                disabled={!selection.file || selection.tone !== 'success' || uploading}
+                onClick={() => void handleUpload()}
+                type="button"
+              >
+                {uploading ? 'Subiendo…' : 'Cargar imagen'}
+              </button>
+            )}
           </div>
         </section>
 
@@ -122,12 +175,14 @@ export function UploadPage() {
           <ul>
             <li>Comprueba que la imagen no contenga información sensible.</li>
             <li>Usa una resolución suficiente para distinguir los objetos.</li>
-            <li>El servidor volverá a validar el tipo y el tamaño en Fase 1.</li>
+            <li>El navegador y el servidor validan nuevamente el tipo y el tamaño.</li>
+            <li>La imagen se guarda en MinIO y sus metadatos en MariaDB.</li>
           </ul>
           <div className="phase-note">
-            <strong>Estado de integración</strong>
+            <strong>Integración activa</strong>
             <p>
-              La validación compartida ya funciona; la carga a MinIO espera el contrato multipart.
+              El archivo se envía como multipart en el campo “file”. MinIO permanece oculto detrás
+              de la API.
             </p>
           </div>
         </aside>

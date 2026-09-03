@@ -46,13 +46,10 @@ describe('apiClient', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({ data: [validImage], pagination: { limit: 20, offset: 0 } }),
-          {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        ),
+        new Response(JSON.stringify({ data: [validImage], pagination: { limit: 20, offset: 0 } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
       ),
     );
 

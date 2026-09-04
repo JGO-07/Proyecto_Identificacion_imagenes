@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../services/categories.service.js');
 vi.mock('../services/images.service.js');
@@ -9,6 +10,7 @@ vi.mock('../services/coco-export.service.js');
 
 import * as annotationsService from '../services/annotations.service.js';
 import * as categoriesService from '../services/categories.service.js';
+import type { CocoDataset } from '../services/coco-export.service.js';
 import * as cocoExportService from '../services/coco-export.service.js';
 import * as dashboardService from '../services/dashboard.service.js';
 import * as imagesService from '../services/images.service.js';
@@ -395,7 +397,7 @@ describe('rutas desconocidas', () => {
 });
 
 describe('exportación COCO', () => {
-  const dataset = {
+  const dataset: CocoDataset = {
     images: [{ id: 1, file_name: 'img_auto_0.jpg', width: 1024, height: 682 }],
     annotations: [
       {
@@ -426,5 +428,59 @@ describe('exportación COCO', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('content-disposition')).toContain('dataset-coco.json');
     expect((await res.json()).categories).toEqual([{ id: 10, name: 'car' }]);
+  });
+});
+
+describe('frontend compilado (producción)', () => {
+  const INDEX_HTML = '<!doctype html><title>portal</title><div id="root"></div>';
+  const APP_JS = 'console.log("bundle");';
+  let createdDistClient = false;
+
+  beforeAll(() => {
+    if (!existsSync('dist/client')) {
+      mkdirSync('dist/client/assets', { recursive: true });
+      createdDistClient = true;
+    }
+    writeFileSync('dist/client/index.html', INDEX_HTML);
+    writeFileSync('dist/client/assets/app.js', APP_JS);
+  });
+
+  afterAll(() => {
+    if (createdDistClient) {
+      rmSync('dist/client', { recursive: true, force: true });
+    } else {
+      rmSync('dist/client/index.html', { force: true });
+      rmSync('dist/client/assets/app.js', { force: true });
+    }
+  });
+
+  it('GET / sirve index.html', async () => {
+    const res = await app.request('/');
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe(INDEX_HTML);
+  });
+
+  it('GET /assets/app.js sirve el bundle estático', async () => {
+    const res = await app.request('/assets/app.js');
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe(APP_JS);
+  });
+
+  it('GET de una ruta del SPA cae a index.html (fallback)', async () => {
+    const res = await app.request('/dashboard');
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe(INDEX_HTML);
+  });
+
+  it('las rutas /api y /health siguen reservadas para la API', async () => {
+    vi.mocked(categoriesService.listCategories).mockResolvedValue([]);
+    vi.mocked(categoriesService.countCategories).mockResolvedValue(0);
+    const health = await app.request('/health');
+    expect(health.status).toBe(200);
+    expect((await health.json()).service).toBe('annotation-api');
+
+    const apiMiss = await app.request('/api/no-existe');
+    expect(apiMiss.status).toBe(404);
+    expect((await apiMiss.json()).error.code).toBe('NOT_FOUND');
   });
 });

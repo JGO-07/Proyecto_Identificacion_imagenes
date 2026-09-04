@@ -4,6 +4,7 @@ import {
   double,
   index,
   int,
+  mysqlEnum,
   mysqlTable,
   text,
   tinyint,
@@ -31,7 +32,9 @@ export const images = mysqlTable(
     sizeBytes: int('size_bytes').notNull(),
     width: int('width').notNull(),
     height: int('height').notNull(),
-    status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending' | 'in_progress' | 'completed'
+    status: mysqlEnum('status', ['pending', 'in_progress', 'completed'])
+      .notNull()
+      .default('pending'),
     createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: datetime('updated_at')
       .notNull()

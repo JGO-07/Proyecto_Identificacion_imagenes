@@ -73,6 +73,16 @@ web_modules/
 # Cache local de imágenes descargadas por el seeder (no versionar binarios)
 data/dataset-src/
 
+# Binarios de imagen: el repositorio guarda metadatos y los archivos viven en MinIO
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.bmp
+*.tif
+*.tiff
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

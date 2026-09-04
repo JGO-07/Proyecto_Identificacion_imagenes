@@ -30,7 +30,7 @@ los `.feature` en sí.
 | `search-operators.feature` | RN-06, RN-07 | Rol 2 | Activo |
 | `data-persistence.feature` | REQ-DATA-001 a 004 | Rol 1 | Activo (sin prueba automatizada, ver `docs/traceability.md`) |
 | `coco-export.feature` | REQ-DATA-005 | Rol 1 | Activo |
-| `annotation-canvas.feature` | SPEC-UI-ANOT-01 | Rol 3 | Activo |
+| `annotation-canvas.feature` | SPEC-UI-ANOT-01 (Fases 1 y 2) | Rol 3 | Activo |
 | `frontend-dashboard-search.feature` | SPEC-UI-DASH-01, SPEC-UI-SEARCH-01 | Rol 3 | Activo — pendiente de revisión por Rol 3 |
 
 ## Pruebas

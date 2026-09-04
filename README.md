@@ -121,8 +121,7 @@ verificación integrada con MariaDB y los endpoints del Rol 2.
 La revisión final del frontend eliminó el prototipo simulado que ya no estaba montado,
 retiró su dependencia Zustand y reforzó el `.gitignore` contra binarios de imagen.
 Consulta [`docs/frontend-phase-3-status.md`](docs/frontend-phase-3-status.md) para ver
-la evidencia de calidad y los bloqueos transversales que aún impiden cerrar la entrega
-completa del equipo.
+la evidencia de calidad y la verificación final integrada de la entrega del equipo.
 
 ## Estructura del proyecto
 

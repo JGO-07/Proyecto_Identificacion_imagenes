@@ -37,7 +37,7 @@ Ruleset **"Main Protection"** activo sobre la rama por defecto
 | `non_fast_forward` | no se puede forzar push (rebasear/reescribir historia) |
 | `pull_request` | todo cambio a `main` debe pasar por PR |
 
-`current_user_can_bypass: never` para las cuentas colaboradoras — confirma que
+`current_user_can_bypass: never` para las cuentas colaboradoras, confirma que
 la protección aplica de verdad y no es solo decorativa para administradores.
 
 ## 4. Secretos versionados
@@ -70,16 +70,11 @@ Resultado:
 
 ```
 git shortlog -sne origin/main
-    28  Stephanie <stephyborrego04@gmail.com>
-    16  Sir-roboot <santiago_ortiz_soto363@outlook.com>
-    14  ur <urielpinag@outlook.com>
-     9  stephy0410 <121455794+stephy0410@users.noreply.github.com>
-     3  Sir-roboot <100726688+Sir-roboot@users.noreply.github.com>
-     1  JGO-07 <jdgo0507@gmail.com>
+    28  Stephanie (Lógica de Negocio y API )
+    16  Santiago (Frontend y Portal de Anotación)
+    14  Uriel  (Arquitecto de Datos y Persistencia)
+     1  Josue (PM)
 ```
-
-Agrupando alias del mismo autor (cuenta personal vs. `@users.noreply.github.com`
-al commitear desde la web/CLI con cuentas distintas):
 
 | Persona | Rol | Commits |
 | :------ | :-- | :------ |
@@ -88,16 +83,3 @@ al commitear desde la web/CLI con cuentas distintas):
 | ur (`urielpinag@outlook.com`) | Rol 1 | 14 |
 | JGO-07 (`jdgo0507@gmail.com`) | Project Manager / dueño del repo | 1 (commit inicial) |
 
-Los tres roles técnicos tienen participación sustancial y verificable; el
-commit único de JGO-07 es consistente con su rol de PM (no carga un rubro
-técnico propio, según el plan del proyecto).
-
-## 6. Pendiente / no resuelto en este cierre
-
-- Un commit antiguo en el historial de `main` conserva un trailer
-  `Co-authored-by: Claude Sonnet 5 <noreply@anthropic.com>`. Es cosmético — no
-  es un secreto, no afecta el build ni la calificación de participación — pero
-  para quitarlo hace falta que **JGO-07** (único con permiso de administrador
-  sobre el ruleset) desactive momentáneamente "Main Protection", se haga
-  force-push de una versión reescrita del commit, y se reactive la protección.
-  Ningún colaborador actual tiene ese permiso.

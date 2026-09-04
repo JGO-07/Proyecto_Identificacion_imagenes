@@ -24,45 +24,38 @@ obligatoria y en ese orden.
    cd Proyecto_Identificacion_imagenes
    ```
 
-2. Crear el archivo de variables de entorno a partir de la plantilla:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   Los valores por defecto de `.env.example` funcionan para el entorno local;
-   no se versiona ningún `.env` real ni se requiere ajustar credenciales.
-
-3. Instalar dependencias:
+2. Instalar dependencias:
 
    ```bash
    npm install
    ```
 
-4. Levantar y preparar todo con un solo comando:
+3. Levantar **todo** con un solo comando:
 
    ```bash
-   npm run setup
+   npm run up
    ```
 
-   `npm run setup` es el punto único de arranque: levanta los contenedores
-   (MariaDB + MinIO) con healthcheck, **espera** a que MariaDB reporte estado
-   `healthy` (`docker compose up -d --wait`), aplica las migraciones
-   versionadas de Drizzle (`db:migrate`) y ejecuta el seeder idempotente
-   (`db:seed`).
+   `npm run up` es el punto único de arranque. Orquesta la secuencia completa
+   sin intervención manual:
+
+   1. Si no existe `.env`, lo crea automáticamente copiando `.env.example`
+      (los valores por defecto funcionan para el entorno local; no se
+      versiona ningún `.env` real).
+   2. Levanta los contenedores (MariaDB + MinIO) con healthcheck y **espera** a
+      que MariaDB reporte estado `healthy` (`docker compose up -d --wait`).
+   3. Aplica las migraciones versionadas de Drizzle (`db:migrate`).
+   4. Ejecuta el seeder idempotente (`db:seed`).
+   5. Arranca la aplicación con la API en `http://localhost:3000` y el frontend
+      de Vite en `http://localhost:5173`. `Ctrl+C` apaga ambos de forma limpia.
+
    > La primera ejecución requiere conexión a internet para descargar las
    > imágenes de Docker y el dataset a MinIO; en ejecuciones posteriores el
    > seeder lee el cache local y no re-descarga.
-
-5. Arrancar la aplicación:
-
-   ```bash
-   npm run dev
-   ```
-
-   La API de Hono queda escuchando en `http://localhost:3000` y el frontend de
-   Vite en `http://localhost:5173`. Para levantar solo la API usa
-   `npm run dev:api`; para solo el frontend, `npm run dev:web`.
+   >
+   > **Nota:** `npm run setup` sigue disponible para solo preparar la
+   > infraestructura/migraciones/seeder; `npm run dev` para arrancar solo la
+   > app (API + frontend) en watch.
 
 ## Puertos de la aplicación
 

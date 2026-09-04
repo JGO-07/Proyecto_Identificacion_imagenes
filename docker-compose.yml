@@ -10,6 +10,11 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD:-app_secure_password}
     ports:
       - "${DB_PORT:-3306}:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     volumes:
       - mariadb_data:/var/lib/mysql
 

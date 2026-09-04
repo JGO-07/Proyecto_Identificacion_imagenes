@@ -1,12 +1,12 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { env } from '../lib/env.js';
 import { ensureBucket, minioClient } from '../storage/minio.js';
 import { db, pool } from './index.js';
-import { categories, images } from './schema.js';
-import { SEED_CATEGORIES, SEED_IMAGES, storageKey } from './seed-data.js';
+import { annotations, categories, images } from './schema.js';
+import { SEED_ANNOTATIONS, SEED_CATEGORIES, SEED_IMAGES, storageKey } from './seed-data.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -91,10 +91,61 @@ async function seedImages(): Promise<void> {
   }
 }
 
+/**
+ * Siembra 3 anotaciones de ejemplo solo si no existen (idempotente por la
+ * pareja image_id + category_id) para facilitar las pruebas de exportación COCO.
+ */
+async function seedAnnotations(): Promise<void> {
+  for (const seed of SEED_ANNOTATIONS) {
+    const image = await db
+      .select({ id: images.id })
+      .from(images)
+      .where(eq(images.fileName, seed.fileName))
+      .limit(1);
+    if (image.length === 0) {
+      throw new Error(`No existe la imagen ${seed.fileName} para la anotación de ejemplo`);
+    }
+    const imageId = image[0].id;
+
+    const category = await db
+      .select({ id: categories.id })
+      .from(categories)
+      .where(eq(categories.name, seed.categoryName))
+      .limit(1);
+    if (category.length === 0) {
+      throw new Error(`No existe la categoría ${seed.categoryName} para la anotación de ejemplo`);
+    }
+    const categoryId = category[0].id;
+
+    const existing = await db
+      .select({ id: annotations.id })
+      .from(annotations)
+      .where(and(eq(annotations.imageId, imageId), eq(annotations.categoryId, categoryId)))
+      .limit(1);
+    if (existing.length > 0) {
+      console.log(`Anotación ya existente, omitida: ${seed.fileName}/${seed.categoryName}`);
+      continue;
+    }
+
+    await db.insert(annotations).values({
+      imageId,
+      categoryId,
+      x: seed.x,
+      y: seed.y,
+      width: seed.width,
+      height: seed.height,
+      area: seed.width * seed.height,
+      isCrowd: 0,
+    });
+    console.log(`Anotación creada: ${seed.fileName}/${seed.categoryName}`);
+  }
+}
+
 async function runSeed(): Promise<void> {
   console.log('Iniciando seeder de Fase 1...');
   await seedCategories();
   await seedImages();
+  await seedAnnotations();
   console.log('Seeder completado. Idempotente: puede volver a ejecutarse.');
 }
 

@@ -11,9 +11,13 @@ para metadatos relacionales, y MinIO (S3-compatible) para los archivos binarios 
 - npm v10 o superior
 - Docker y Docker Compose (v2)
 
-## Configuración del entorno
+## Puesta en marcha desde cero
 
-1. Clonar el repositorio:
+El siguiente flujo replica exactamente lo que hace un evaluador desde un clon
+limpio. No hay pasos implícitos ni comandos omitidos: cada una de las etapas es
+obligatoria y en ese orden.
+
+1. Clonar el repositorio y entrar a la carpeta:
 
    ```bash
    git clone https://github.com/JGO-07/Proyecto_Identificacion_imagenes.git
@@ -26,8 +30,8 @@ para metadatos relacionales, y MinIO (S3-compatible) para los archivos binarios 
    cp .env.example .env
    ```
 
-   `.env.example` contiene **solo valores de ejemplo**. Ajusta credenciales y puertos
-   según tu entorno; no se versiona ningún `.env` real.
+   Los valores por defecto de `.env.example` funcionan para el entorno local;
+   no se versiona ningún `.env` real ni se requiere ajustar credenciales.
 
 3. Instalar dependencias:
 
@@ -35,19 +39,30 @@ para metadatos relacionales, y MinIO (S3-compatible) para los archivos binarios 
    npm install
    ```
 
-4. Levantar la infraestructura (MariaDB + MinIO):
+4. Levantar y preparar todo con un solo comando:
 
    ```bash
-   docker compose up -d
+   npm run setup
    ```
 
-   Esto expone:
+   `npm run setup` es el punto único de arranque: levanta los contenedores
+   (MariaDB + MinIO) con healthcheck, **espera** a que MariaDB reporte estado
+   `healthy` (`docker compose up -d --wait`), aplica las migraciones
+   versionadas de Drizzle (`db:migrate`) y ejecuta el seeder idempotente
+   (`db:seed`).
+   > La primera ejecución requiere conexión a internet para descargar las
+   > imágenes de Docker y el dataset a MinIO; en ejecuciones posteriores el
+   > seeder lee el cache local y no re-descarga.
 
-   | Servicio          | Puerto local (por defecto) |
-   | ----------------- | -------------------------- |
-   | MariaDB           | `3306`                     |
-   | MinIO (API S3)    | `9000`                     |
-   | MinIO (consola)   | `9001`                     |
+5. Arrancar la aplicación:
+
+   ```bash
+   npm run dev
+   ```
+
+   La API de Hono queda escuchando en `http://localhost:3000` y el frontend de
+   Vite en `http://localhost:5173`. Para levantar solo la API usa
+   `npm run dev:api`; para solo el frontend, `npm run dev:web`.
 
 ## Puertos de la aplicación
 
@@ -55,6 +70,16 @@ para metadatos relacionales, y MinIO (S3-compatible) para los archivos binarios 
 | ------------- | ----------- | ------ |
 | Desarrollo    | `PORT`      | `3000` |
 | Producción    | `PROD_PORT` | `3100` |
+
+## Verificación rápida
+
+| Comando       | Qué verifica                                                                 |
+| ------------- | ---------------------------------------------------------------------------- |
+| `npm run typecheck` | Compila servidor y frontend en modo estricto (TypeScript, 0 errores).   |
+| `npm run lint` | Ejecuta Biome sobre todo el repo (0 errores y 0 advertencias).               |
+| `npm test`     | Corre la suite de Vitest (unidades, servicios, esquemas y API).              |
+| `npm run setup` | Valida arranque de contenedores + migraciones + seeder idempotente.        |
+| `GET /api/coco/export` | Descarga el dataset en formato COCO con `Content-Disposition: attachment; filename="dataset-coco.json"`. |
 
 ## Cómo levantar el proyecto
 

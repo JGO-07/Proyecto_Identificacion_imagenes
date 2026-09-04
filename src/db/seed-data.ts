@@ -36,3 +36,22 @@ export const SEED_IMAGES: SeedImage[] = [
 export function storageKey(image: Pick<SeedImage, 'fileName'>): string {
   return `uploads/${image.fileName}`;
 }
+
+export type SeedAnnotation = {
+  fileName: string;
+  categoryName: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+/**
+ * Tres anotaciones de ejemplo para facilitar pruebas. Cada bounding box está
+ * dentro de las dimensiones de su imagen (coordenadas absolutas en píxeles).
+ */
+export const SEED_ANNOTATIONS: SeedAnnotation[] = [
+  { fileName: 'img_auto_0.jpg', categoryName: 'car', x: 100, y: 80, width: 300, height: 200 },
+  { fileName: 'img_perro_0.jpg', categoryName: 'dog', x: 50, y: 60, width: 180, height: 140 },
+  { fileName: 'img_gato_0.jpg', categoryName: 'cat', x: 120, y: 90, width: 220, height: 180 },
+];

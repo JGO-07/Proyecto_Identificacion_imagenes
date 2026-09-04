@@ -5,9 +5,11 @@ vi.mock('../services/images.service.js');
 vi.mock('../services/annotations.service.js');
 vi.mock('../services/search.service.js');
 vi.mock('../services/dashboard.service.js');
+vi.mock('../services/coco-export.service.js');
 
 import * as annotationsService from '../services/annotations.service.js';
 import * as categoriesService from '../services/categories.service.js';
+import * as cocoExportService from '../services/coco-export.service.js';
 import * as dashboardService from '../services/dashboard.service.js';
 import * as imagesService from '../services/images.service.js';
 import * as searchService from '../services/search.service.js';
@@ -389,5 +391,40 @@ describe('rutas desconocidas', () => {
     const res = await app.request('/api/no-existe');
     expect(res.status).toBe(404);
     expect((await res.json()).error.code).toBe('NOT_FOUND');
+  });
+});
+
+describe('exportación COCO', () => {
+  const dataset = {
+    images: [{ id: 1, file_name: 'img_auto_0.jpg', width: 1024, height: 682 }],
+    annotations: [
+      {
+        id: 100,
+        image_id: 1,
+        category_id: 10,
+        bbox: [100, 80, 300, 200],
+        area: 60000,
+        iscrowd: 0,
+      },
+    ],
+    categories: [{ id: 10, name: 'car' }],
+  };
+
+  it('GET /api/coco/export -> 200 con el JSON descargable (Content-Disposition)', async () => {
+    vi.mocked(cocoExportService.buildCocoDataset).mockResolvedValue(dataset);
+    const res = await app.request('/api/coco/export');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-disposition')).toBe('attachment; filename="dataset-coco.json"');
+    const body = await res.json();
+    expect(body.images).toHaveLength(1);
+    expect(body.annotations[0].bbox).toEqual([100, 80, 300, 200]);
+  });
+
+  it('GET /api/coco/dataset.json -> mismo JSON descargable (alias)', async () => {
+    vi.mocked(cocoExportService.buildCocoDataset).mockResolvedValue(dataset);
+    const res = await app.request('/api/coco/dataset.json');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-disposition')).toContain('dataset-coco.json');
+    expect((await res.json()).categories).toEqual([{ id: 10, name: 'car' }]);
   });
 });

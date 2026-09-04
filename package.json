@@ -7,7 +7,7 @@
     "dev": "concurrently -k -n api,web -c blue,magenta \"npm:dev:api\" \"npm:dev:web\"",
     "dev:api": "tsx watch src/server.ts",
     "dev:web": "vite",
-    "start": "node dist/server.js",
+    "start": "NODE_ENV=production node dist/server.js",
     "build": "tsc && vite build",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.client.json",
     "test": "vitest run",

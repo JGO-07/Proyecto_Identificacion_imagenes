@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { IntegrationBadge } from '../components/IntegrationBadge.js';
 import { StatusBadge } from '../components/StatusBadge.js';
 import { ApiClientError, apiClient } from '../lib/api-client.js';
-import type { ApiImage, ImageStatus, Pagination } from '../types/api.js';
+import type { ApiCategory, ApiImage, ImageStatus, Pagination } from '../types/api.js';
 
 type StatusFilter = 'all' | ImageStatus;
 
@@ -57,6 +57,12 @@ export function ImagesPage() {
   });
   const [offset, setOffset] = useState(0);
   const [filter, setFilter] = useState<StatusFilter>('all');
+  const [categories, setCategories] = useState<ApiCategory[]>([]);
+  const [categoryId, setCategoryId] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [query, setQuery] = useState('');
+  const [appliedQuery, setAppliedQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,7 +70,16 @@ export function ImagesPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.images.list({ limit: PAGE_SIZE, offset });
+      const response = appliedQuery
+        ? await apiClient.search.list(appliedQuery, { limit: PAGE_SIZE, offset })
+        : await apiClient.images.list({
+            limit: PAGE_SIZE,
+            offset,
+            status: filter === 'all' ? undefined : filter,
+            categoryId: categoryId ? Number(categoryId) : undefined,
+            from: from ? new Date(`${from}T00:00:00`).toISOString() : undefined,
+            to: to ? new Date(`${to}T23:59:59`).toISOString() : undefined,
+          });
       setImages(response.data);
       setPagination(response.pagination);
     } catch (cause) {
@@ -72,16 +87,30 @@ export function ImagesPage() {
     } finally {
       setLoading(false);
     }
-  }, [offset]);
+  }, [appliedQuery, categoryId, filter, from, offset, to]);
 
   useEffect(() => {
     void loadImages();
   }, [loadImages]);
 
-  const visibleImages = useMemo(
-    () => images.filter((image) => filter === 'all' || image.status === filter),
-    [filter, images],
-  );
+  useEffect(() => {
+    void apiClient.categories
+      .list({ limit: 100 })
+      .then((response) => setCategories(response.data))
+      .catch(() => setCategories([]));
+  }, []);
+
+  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setOffset(0);
+    setAppliedQuery(query.trim());
+  };
+
+  const clearSearch = () => {
+    setQuery('');
+    setAppliedQuery('');
+    setOffset(0);
+  };
   const hasPrevious = pagination.offset > 0;
   const hasNext = pagination.offset + pagination.limit < pagination.total;
 
@@ -121,14 +150,80 @@ export function ImagesPage() {
         </div>
       </section>
 
+      <form className="search-filter-panel" onSubmit={handleSearch}>
+        <label className="search-field">
+          <span>Buscar por clases</span>
+          <input
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="car AND person"
+            type="search"
+            value={query}
+          />
+        </label>
+        <button className="button button-primary" type="submit">
+          Buscar
+        </button>
+        {appliedQuery && (
+          <button className="button button-ghost" onClick={clearSearch} type="button">
+            Limpiar búsqueda
+          </button>
+        )}
+        <label>
+          <span>Categoría</span>
+          <select
+            disabled={Boolean(appliedQuery)}
+            onChange={(event) => {
+              setCategoryId(event.target.value);
+              setOffset(0);
+            }}
+            value={categoryId}
+          >
+            <option value="">Todas</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>Desde</span>
+          <input
+            disabled={Boolean(appliedQuery)}
+            onChange={(event) => {
+              setFrom(event.target.value);
+              setOffset(0);
+            }}
+            type="date"
+            value={from}
+          />
+        </label>
+        <label>
+          <span>Hasta</span>
+          <input
+            disabled={Boolean(appliedQuery)}
+            onChange={(event) => {
+              setTo(event.target.value);
+              setOffset(0);
+            }}
+            type="date"
+            value={to}
+          />
+        </label>
+      </form>
+
       <div className="filter-row">
         <fieldset className="segmented-control">
-          <legend className="visually-hidden">Filtrar imágenes por estado en esta página</legend>
+          <legend className="visually-hidden">Filtrar imágenes por estado en el servidor</legend>
           {filters.map((item) => (
             <button
               className={filter === item.value ? 'selected' : undefined}
               key={item.value}
-              onClick={() => setFilter(item.value)}
+              disabled={Boolean(appliedQuery)}
+              onClick={() => {
+                setFilter(item.value);
+                setOffset(0);
+              }}
               type="button"
             >
               {item.label}
@@ -136,8 +231,7 @@ export function ImagesPage() {
           ))}
         </fieldset>
         <span className="result-count">
-          {visibleImages.length} {visibleImages.length === 1 ? 'resultado' : 'resultados'} en esta
-          página
+          {pagination.total} {pagination.total === 1 ? 'resultado' : 'resultados'}
         </span>
       </div>
 
@@ -160,10 +254,10 @@ export function ImagesPage() {
           <h2>Cargando imágenes…</h2>
           <p>Consultando la información persistida en el servidor.</p>
         </section>
-      ) : visibleImages.length > 0 ? (
+      ) : images.length > 0 ? (
         <>
           <section aria-label="Imágenes disponibles" className="image-grid">
-            {visibleImages.map((image) => (
+            {images.map((image) => (
               <article className="image-card" key={image.id}>
                 <ImagePreview image={image} />
                 <div className="image-card-body">
@@ -213,26 +307,24 @@ export function ImagesPage() {
             ◫
           </span>
           <h2>
-            {images.length === 0 ? 'Todavía no hay imágenes' : 'No hay imágenes con este estado'}
+            {appliedQuery
+              ? 'La búsqueda no produjo resultados'
+              : 'No hay imágenes con estos filtros'}
           </h2>
-          <p>
-            {images.length === 0
-              ? 'Carga la primera imagen para comenzar a anotar.'
-              : 'Prueba otro filtro dentro de esta página.'}
-          </p>
-          {images.length === 0 ? (
-            <Link className="button button-primary" to="/upload">
-              Cargar una imagen
-            </Link>
-          ) : (
-            <button
-              className="button button-secondary"
-              onClick={() => setFilter('all')}
-              type="button"
-            >
-              Mostrar todas
-            </button>
-          )}
+          <p>Ajusta la expresión, el estado, la categoría o el intervalo de fechas.</p>
+          <button
+            className="button button-secondary"
+            onClick={() => {
+              clearSearch();
+              setFilter('all');
+              setCategoryId('');
+              setFrom('');
+              setTo('');
+            }}
+            type="button"
+          >
+            Limpiar filtros
+          </button>
         </section>
       )}
     </div>

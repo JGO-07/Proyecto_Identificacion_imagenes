@@ -35,6 +35,10 @@ export const annotationUpdateInputSchema = annotationCreateInputSchema
 
 export const imageStatusSchema = z.enum(['pending', 'in_progress', 'completed']);
 
+export const imageUpdateInputSchema = z.object({
+  status: imageStatusSchema,
+});
+
 const isoDateSchema = z.string().min(1);
 
 export const apiImageSchema = z.object({
@@ -101,4 +105,36 @@ export const annotationResponseSchema = z.object({ data: apiAnnotationSchema });
 export const annotationListResponseSchema = z.object({
   data: z.array(apiAnnotationSchema),
   pagination: paginationSchema,
+});
+
+export const searchResponseSchema = z.object({
+  data: z.array(apiImageSchema),
+  pagination: paginationSchema,
+  query: z.object({
+    operator: z.enum(['AND', 'OR']),
+    terms: z.array(z.string().min(1)),
+  }),
+});
+
+export const dashboardMetricsResponseSchema = z.object({
+  data: z.object({
+    images: z.object({
+      total: z.number().int().min(0),
+      byStatus: z.object({
+        pending: z.number().int().min(0),
+        in_progress: z.number().int().min(0),
+        completed: z.number().int().min(0),
+      }),
+      progressPct: z.number().min(0).max(100),
+    }),
+    annotations: z.object({ total: z.number().int().min(0) }),
+    objectsByCategory: z.array(
+      z.object({
+        categoryId: z.number().int().positive(),
+        name: z.string().min(1),
+        color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+        count: z.number().int().min(0),
+      }),
+    ),
+  }),
 });

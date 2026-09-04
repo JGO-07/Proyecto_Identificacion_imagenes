@@ -128,4 +128,75 @@ describe('apiClient', () => {
   it('construye la URL pública del archivo sin exponer storagePath', () => {
     expect(apiClient.images.fileUrl(27)).toBe('/api/images/27/file');
   });
+
+  it('marca una imagen como completada antes de avanzar', async () => {
+    const completedImage = {
+      ...validImage,
+      status: 'completed',
+      updatedAt: '2026-09-03T08:00:00Z',
+    };
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: completedImage }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await apiClient.images.updateStatus(1, 'completed');
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/images/1', {
+      method: 'PATCH',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'completed' }),
+    });
+    expect(result.data.status).toBe('completed');
+  });
+
+  it('envía búsqueda booleana paginada y valida su interpretación', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [validImage],
+          pagination: { limit: 12, offset: 0, total: 1 },
+          query: { operator: 'AND', terms: ['car', 'person'] },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await apiClient.search.list('car AND person', { limit: 12 });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/search?limit=12&offset=0&q=car+AND+person',
+      expect.any(Object),
+    );
+    expect(result.query).toEqual({ operator: 'AND', terms: ['car', 'person'] });
+  });
+
+  it('valida métricas agregadas del dashboard', async () => {
+    const metrics = {
+      images: {
+        total: 9,
+        byStatus: { pending: 4, in_progress: 4, completed: 1 },
+        progressPct: 11.11,
+      },
+      annotations: { total: 7 },
+      objectsByCategory: [{ categoryId: 1, name: 'car', color: '#EF4444', count: 2 }],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ data: metrics }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+
+    const result = await apiClient.dashboard.metrics();
+
+    expect(result.data).toEqual(metrics);
+  });
 });

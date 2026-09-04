@@ -62,8 +62,7 @@ del servidor para evitar incluir Drizzle, MariaDB o MinIO en el bundle del front
 ## 3. Necesidades por pantalla
 
 El cliente validado está implementado en `src/client/lib/api-client.ts`. Las pantallas
-de bandeja, carga y anotación lo usan directamente. El dashboard conserva datos
-simulados porque sus métricas pertenecen a Fase 2.
+de bandeja, carga, anotación y dashboard lo usan directamente.
 
 | Pantalla | Operación | Endpoint | Estado |
 | :------- | :-------- | :------- | :----- |
@@ -77,7 +76,7 @@ simulados porque sus métricas pertenecen a Fase 2.
 | Anotación | crear caja | `POST /api/annotations` | Disponible |
 | Anotación | mover/redimensionar | `PATCH /api/annotations/:id` | Disponible |
 | Anotación | borrar caja | `DELETE /api/annotations/:id` | Disponible |
-| Dashboard | consultar métricas | `GET /api/dashboard/metrics` | Pendiente de Fase 2 |
+| Dashboard | consultar métricas | `GET /api/dashboard/metrics` | Disponible |
 
 ## 4. Cuerpos enviados desde el canvas
 

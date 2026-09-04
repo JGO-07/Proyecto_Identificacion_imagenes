@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   AnnotationCanvas,
   type AnnotationGeometryChanges,
@@ -20,17 +20,25 @@ interface Workspace {
   annotationTotal: number;
 }
 
+type UndoAction =
+  | { kind: 'create'; annotation: ApiAnnotation }
+  | { kind: 'update'; annotation: ApiAnnotation }
+  | { kind: 'delete'; annotation: ApiAnnotation };
+
 function errorMessage(cause: unknown, fallback: string) {
   return cause instanceof ApiClientError ? cause.message : fallback;
 }
 
 export function AnnotationPage() {
   const { imageId } = useParams();
+  const navigate = useNavigate();
   const numericImageId = Number(imageId);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<number | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [activeTool, setActiveTool] = useState<CanvasTool>('select');
+  const [zoom, setZoom] = useState(1);
+  const [undoStack, setUndoStack] = useState<UndoAction[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +83,8 @@ export function AnnotationPage() {
           : (categoriesResponse.data[0]?.id ?? null),
       );
       setActiveTool('select');
+      setZoom(1);
+      setUndoStack([]);
       setFeedback('Datos cargados desde la API. Cada cambio se guarda automáticamente.');
     } catch (cause) {
       setWorkspace(null);
@@ -126,6 +136,7 @@ export function AnnotationPage() {
           : current,
       );
       setSelectedAnnotationId(created.data.id);
+      setUndoStack((current) => [...current, { kind: 'create', annotation: created.data }]);
       setActiveTool('select');
       setFeedback(`Caja de “${category.name}” guardada en la base de datos.`);
     } catch (cause) {
@@ -176,6 +187,7 @@ export function AnnotationPage() {
           : current,
       );
       setFeedback('Cambios guardados en la base de datos.');
+      setUndoStack((current) => [...current, { kind: 'update', annotation: previous }]);
     } catch (cause) {
       setWorkspace((current) =>
         current
@@ -189,6 +201,142 @@ export function AnnotationPage() {
       );
       setFeedback(
         errorMessage(cause, 'No se pudo guardar el cambio; la caja volvió a su posición anterior.'),
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (annotation: ApiAnnotation) => {
+    if (!workspace) {
+      return;
+    }
+
+    setSaving(true);
+    setFeedback('Eliminando la caja…');
+    try {
+      await apiClient.annotations.remove(annotation.id);
+      setWorkspace((current) =>
+        current
+          ? {
+              ...current,
+              annotations: current.annotations.filter((item) => item.id !== annotation.id),
+              annotationTotal: Math.max(0, current.annotationTotal - 1),
+            }
+          : current,
+      );
+      setSelectedAnnotationId((current) => (current === annotation.id ? null : current));
+      setUndoStack((current) => [...current, { kind: 'delete', annotation }]);
+      setFeedback('Caja eliminada. Puedes deshacer esta acción.');
+    } catch (cause) {
+      setFeedback(errorMessage(cause, 'No se pudo eliminar la caja.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUndo = async () => {
+    const action = undoStack.at(-1);
+    if (!workspace || !action) {
+      return;
+    }
+
+    setSaving(true);
+    setFeedback('Deshaciendo el último cambio…');
+    try {
+      if (action.kind === 'create') {
+        await apiClient.annotations.remove(action.annotation.id);
+        setWorkspace((current) =>
+          current
+            ? {
+                ...current,
+                annotations: current.annotations.filter(
+                  (annotation) => annotation.id !== action.annotation.id,
+                ),
+                annotationTotal: Math.max(0, current.annotationTotal - 1),
+              }
+            : current,
+        );
+      } else if (action.kind === 'update') {
+        const restored = await apiClient.annotations.update(action.annotation.id, {
+          categoryId: action.annotation.categoryId,
+          x: action.annotation.x,
+          y: action.annotation.y,
+          width: action.annotation.width,
+          height: action.annotation.height,
+          isCrowd: action.annotation.isCrowd,
+        });
+        setWorkspace((current) =>
+          current
+            ? {
+                ...current,
+                annotations: current.annotations.map((annotation) =>
+                  annotation.id === restored.data.id ? restored.data : annotation,
+                ),
+              }
+            : current,
+        );
+      } else {
+        const restored = await apiClient.annotations.create({
+          imageId: action.annotation.imageId,
+          categoryId: action.annotation.categoryId,
+          x: action.annotation.x,
+          y: action.annotation.y,
+          width: action.annotation.width,
+          height: action.annotation.height,
+          isCrowd: action.annotation.isCrowd,
+        });
+        setWorkspace((current) =>
+          current
+            ? {
+                ...current,
+                annotations: [...current.annotations, restored.data],
+                annotationTotal: current.annotationTotal + 1,
+              }
+            : current,
+        );
+        setSelectedAnnotationId(restored.data.id);
+      }
+
+      setUndoStack((current) => current.slice(0, -1));
+      setFeedback('Último cambio deshecho y sincronizado con la API.');
+    } catch (cause) {
+      setFeedback(errorMessage(cause, 'No se pudo deshacer el último cambio.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleComplete = async (nextImageId?: number) => {
+    if (!workspace || workspace.image.status !== 'in_progress') {
+      return;
+    }
+
+    setSaving(true);
+    setFeedback('Marcando la imagen como completada…');
+    try {
+      const updated = await apiClient.images.updateStatus(workspace.image.id, 'completed');
+      setWorkspace((current) =>
+        current
+          ? {
+              ...current,
+              image: updated.data,
+              images: current.images.map((image) =>
+                image.id === updated.data.id ? updated.data : image,
+              ),
+            }
+          : current,
+      );
+
+      if (nextImageId) {
+        navigate(`/annotate/${nextImageId}`);
+        return;
+      }
+
+      setFeedback('Imagen completada. Ya puedes volver a la bandeja.');
+    } catch (cause) {
+      setFeedback(
+        errorMessage(cause, 'No se pudo finalizar la imagen. Los cambios permanecen guardados.'),
       );
     } finally {
       setSaving(false);
@@ -329,7 +477,41 @@ export function AnnotationPage() {
               </button>
             </div>
             <div className="toolbar-group">
-              <span className="zoom-indicator">Ajustar</span>
+              <button
+                className="tool-button"
+                disabled={undoStack.length === 0 || saving}
+                onClick={() => void handleUndo()}
+                type="button"
+              >
+                ↶ Deshacer
+              </button>
+              <button
+                aria-label="Alejar"
+                className="icon-button"
+                disabled={zoom <= 0.5 || saving}
+                onClick={() => setZoom((current) => Math.max(0.5, current - 0.25))}
+                type="button"
+              >
+                −
+              </button>
+              <button
+                className="zoom-indicator zoom-reset"
+                disabled={saving}
+                onClick={() => setZoom(1)}
+                title="Ajustar al ancho"
+                type="button"
+              >
+                {Math.round(zoom * 100)}%
+              </button>
+              <button
+                aria-label="Acercar"
+                className="icon-button"
+                disabled={zoom >= 2 || saving}
+                onClick={() => setZoom((current) => Math.min(2, current + 0.25))}
+                type="button"
+              >
+                +
+              </button>
               <button
                 aria-label="Recargar datos persistidos"
                 className="icon-button"
@@ -355,6 +537,7 @@ export function AnnotationPage() {
             onCreate={(box) => void handleCreate(box)}
             onSelect={setSelectedAnnotationId}
             selectedId={selectedAnnotationId}
+            zoom={zoom}
           />
           <div className="canvas-caption">
             <span>
@@ -378,26 +561,37 @@ export function AnnotationPage() {
                 const category = categories.find((item) => item.id === annotation.categoryId);
                 const isSelected = annotation.id === selectedAnnotationId;
                 return (
-                  <button
+                  <div
                     className={`annotation-item${isSelected ? ' active' : ''}`}
                     key={annotation.id}
-                    onClick={() => setSelectedAnnotationId(annotation.id)}
-                    type="button"
                   >
-                    <span className="annotation-index">#{annotation.id}</span>
-                    <span className="annotation-copy">
-                      <strong>
-                        <i style={{ background: category?.color }} />
-                        {category?.name ?? 'Categoría no disponible'}
-                      </strong>
-                      <small>
-                        {Math.round(annotation.width)} × {Math.round(annotation.height)} px
-                      </small>
-                    </span>
-                    <span aria-hidden="true" className="annotation-chevron">
-                      ›
-                    </span>
-                  </button>
+                    <button
+                      className="annotation-select"
+                      onClick={() => setSelectedAnnotationId(annotation.id)}
+                      type="button"
+                    >
+                      <span className="annotation-index">#{annotation.id}</span>
+                      <span className="annotation-copy">
+                        <strong>
+                          <i style={{ background: category?.color }} />
+                          {category?.name ?? 'Categoría no disponible'}
+                        </strong>
+                        <small>
+                          {Math.round(annotation.width)} × {Math.round(annotation.height)} px
+                        </small>
+                      </span>
+                    </button>
+                    <button
+                      aria-label={`Eliminar anotación ${annotation.id}`}
+                      className="annotation-delete"
+                      disabled={saving}
+                      onClick={() => void handleDelete(annotation)}
+                      title="Eliminar caja"
+                      type="button"
+                    >
+                      ×
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -435,18 +629,34 @@ export function AnnotationPage() {
           )}
         </div>
         <div className="save-actions">
-          <button className="button button-secondary" disabled type="button">
+          <span aria-live="polite" className="save-status">
+            <span aria-hidden="true" className="save-status-dot" />
             {saving ? 'Guardando…' : 'Cambios guardados automáticamente'}
-          </button>
-          {nextImage && !saving ? (
+          </span>
+          {image.status === 'completed' && nextImage && !saving ? (
             <Link className="button button-primary" to={`/annotate/${nextImage.id}`}>
-              Guardado · siguiente
+              Siguiente imagen
               <span aria-hidden="true">→</span>
             </Link>
-          ) : (
+          ) : image.status === 'completed' ? (
             <button className="button button-primary" disabled type="button">
-              Guardado · siguiente
-              <span aria-hidden="true">→</span>
+              Imagen completada
+              <span aria-hidden="true">✓</span>
+            </button>
+          ) : (
+            <button
+              className="button button-primary"
+              disabled={image.status !== 'in_progress' || saving}
+              onClick={() => void handleComplete(nextImage?.id)}
+              title={
+                image.status === 'pending'
+                  ? 'Agrega al menos una caja antes de finalizar la imagen'
+                  : undefined
+              }
+              type="button"
+            >
+              {nextImage ? 'Finalizar y siguiente' : 'Finalizar imagen'}
+              <span aria-hidden="true">{nextImage ? '→' : '✓'}</span>
             </button>
           )}
         </div>

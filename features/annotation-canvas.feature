@@ -42,3 +42,20 @@ Característica: Manipulación básica de bounding boxes
     Dado que la imagen se muestra al 50 por ciento de su tamaño original
     Cuando muevo visualmente una caja 50 píxeles a la derecha
     Entonces su coordenada horizontal original aumenta 100 píxeles
+
+  Escenario: Finalizar una imagen guarda el estado antes de avanzar
+    Dada una imagen con estado "in_progress"
+    Cuando selecciono "Finalizar y siguiente"
+    Entonces la imagen queda en estado "completed"
+    Y después se abre la siguiente imagen
+
+  Escenario: Deshacer un borrado restaura la caja en la API
+    Dada una caja persistida
+    Cuando elimino la caja
+    Y selecciono "Deshacer"
+    Entonces vuelve a existir una caja equivalente en la imagen
+
+  Escenario: El zoom no modifica las coordenadas guardadas
+    Dada una caja persistida
+    Cuando aumento el zoom al 150 por ciento
+    Entonces la caja conserva sus coordenadas en píxeles originales

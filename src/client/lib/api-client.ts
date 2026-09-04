@@ -6,17 +6,28 @@ import {
   annotationUpdateInputSchema,
   apiErrorSchema,
   categoryListResponseSchema,
+  dashboardMetricsResponseSchema,
   imageListResponseSchema,
   imageResponseSchema,
+  imageUpdateInputSchema,
+  searchResponseSchema,
   uploadFileInputSchema,
 } from '../schemas/api.js';
 
 type AnnotationCreateInput = z.input<typeof annotationCreateInputSchema>;
 type AnnotationUpdateInput = z.input<typeof annotationUpdateInputSchema>;
+type ImageUpdateInput = z.input<typeof imageUpdateInputSchema>;
 
 interface PaginationInput {
   limit?: number;
   offset?: number;
+}
+
+interface ImageListInput extends PaginationInput {
+  categoryId?: number;
+  from?: string;
+  status?: ImageUpdateInput['status'];
+  to?: string;
 }
 
 interface AnnotationListInput extends PaginationInput {
@@ -98,10 +109,19 @@ function paginationParams(input: PaginationInput = {}) {
   });
 }
 
+function imageListParams(input: ImageListInput = {}) {
+  const params = paginationParams(input);
+  if (input.status) params.set('status', input.status);
+  if (input.categoryId) params.set('categoryId', String(input.categoryId));
+  if (input.from) params.set('from', input.from);
+  if (input.to) params.set('to', input.to);
+  return params;
+}
+
 export const apiClient = {
   images: {
-    list(input: PaginationInput = {}) {
-      return request(`/api/images?${paginationParams(input)}`, imageListResponseSchema);
+    list(input: ImageListInput = {}) {
+      return request(`/api/images?${imageListParams(input)}`, imageListResponseSchema);
     },
     get(id: number) {
       return request(`/api/images/${id}`, imageResponseSchema);
@@ -116,6 +136,13 @@ export const apiClient = {
       return request('/api/images/upload', imageResponseSchema, {
         method: 'POST',
         body: form,
+      });
+    },
+    updateStatus(id: number, status: ImageUpdateInput['status']) {
+      const body = imageUpdateInputSchema.parse({ status });
+      return request(`/api/images/${id}`, imageResponseSchema, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
       });
     },
   },
@@ -164,6 +191,18 @@ export const apiClient = {
         parsedError.success ? parsedError.data.error.message : 'No se pudo borrar la anotación',
         parsedError.success ? parsedError.data.error.details : payload,
       );
+    },
+  },
+  search: {
+    list(q: string, input: PaginationInput = {}) {
+      const params = paginationParams(input);
+      params.set('q', q.trim());
+      return request(`/api/search?${params}`, searchResponseSchema);
+    },
+  },
+  dashboard: {
+    metrics() {
+      return request('/api/dashboard/metrics', dashboardMetricsResponseSchema);
     },
   },
 };

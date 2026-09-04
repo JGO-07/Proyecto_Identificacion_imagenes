@@ -1,3 +1,4 @@
+import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { ZodError } from 'zod';
 import { AppError } from './errors.js';
@@ -23,6 +24,24 @@ app.route('/api/annotations', annotationsRoutes);
 app.route('/api/search', searchRoutes);
 app.route('/api/dashboard', dashboardRoutes);
 app.route('/api/coco', cocoRoutes);
+
+/**
+ * Frontend compilado (producción). `npm start` sirve `dist/client` además de la
+ * API en el mismo puerto. Todo lo que no empiece por `/api` o `/health` se
+ * resuelve como archivo estático y, si no existe, como `index.html` para que
+ * funcione el enrutado del SPA en el cliente. En desarrollo esa carpeta no
+ * existe y estas rutas simplemente caen al 404 (Vite sirve el frontend aparte).
+ */
+const FRONTEND_DIR = './dist/client';
+const isApiPath = (path: string): boolean =>
+  path === '/health' || path.startsWith('/health/') || path.startsWith('/api');
+
+app.use('*', (c, next) =>
+  isApiPath(c.req.path) ? next() : serveStatic({ root: FRONTEND_DIR })(c, next),
+);
+app.get('*', (c, next) =>
+  isApiPath(c.req.path) ? next() : serveStatic({ path: `${FRONTEND_DIR}/index.html` })(c, next),
+);
 
 app.notFound((c) =>
   c.json({ error: { code: 'NOT_FOUND', message: 'Recurso no encontrado' } }, 404),

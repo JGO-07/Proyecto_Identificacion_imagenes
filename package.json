@@ -19,7 +19,8 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
     "storage:test": "tsx src/storage/test-minio.ts",
-    "setup": "docker compose up -d --wait && npm run db:migrate && npm run db:seed"
+    "setup": "docker compose up -d --wait && npm run db:migrate && npm run db:seed",
+    "up": "tsx scripts/up.ts"
   },
   "repository": {
     "type": "git",

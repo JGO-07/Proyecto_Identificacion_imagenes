@@ -71,8 +71,8 @@ npm run db:migrate       # (Fase 1) aplica las migraciones versionadas de Drizzl
 npm run db:seed          # (Fase 1) carga categorías e imágenes de ejemplo (idempotente)
 ```
 
-> La bandeja, la carga y el canvas consumen la API real. El dashboard conserva datos
-> simulados identificados en la UI hasta que sus endpoints se implementen en Fase 2.
+> La bandeja, la carga, el canvas y el dashboard consumen la API real. El dashboard
+> obtiene sus agregados desde `GET /api/dashboard/metrics`.
 
 ### Avance de Fase 1 — Rol 3
 
@@ -89,7 +89,7 @@ ver la evidencia, las pruebas y los puntos de integración pendientes.
 La rama de Fase 2 agrega finalizar y avanzar, zoom, borrado y deshacer persistentes,
 búsqueda/filtros de servidor y dashboard con métricas reales. Consulta
 [`docs/frontend-phase-2-status.md`](docs/frontend-phase-2-status.md) para conocer la
-verificación y la dependencia temporal con la rama de Fase 2 del Rol 2.
+verificación integrada con MariaDB y los endpoints del Rol 2.
 
 ## Estructura del proyecto
 

@@ -2,7 +2,7 @@
 
 **Rama:** `feat/phase-2-rol3`
 
-**Base:** merge de Fase 1 en `main` (`0b6688f`)
+**Base:** merge de Fase 2 del Rol 2 en `main` (`de73f7d`)
 
 ## Implementado
 
@@ -21,18 +21,20 @@ respuesta agregada y no calcula métricas descargando páginas parciales.
 ## Verificación
 
 ```text
-npm test           68/68 pruebas aprobadas
+npm test           97/97 pruebas aprobadas
 npm run typecheck  sin errores
-npm run lint       65 archivos sin errores
+npm run lint       77 archivos sin errores
 npm run build      aprobado; ningún chunk supera 500 kB
+npm run test:db    2/2 pruebas contra MariaDB aprobadas
 ```
 
-## Dependencia pendiente
+## Integración con Rol 2 cerrada
 
-`/api/search`, `/api/dashboard/metrics` y los filtros de `/api/images` están en
-`origin/feat/phase-2-rol2`, todavía sin mezclar en `main`. El frontend se implementó
-según ese contrato y se probó con respuestas HTTP simuladas. La prueba integrada real
-requiere el merge del Rol 2 y después rebasar esta rama sobre el nuevo `main`.
+El Pull Request #9 del Rol 2 se mezcló en `main`. Esta rama se rebasó sobre ese merge
+sin conflictos, por lo que consume los endpoints reales de búsqueda, filtros y
+dashboard; no incorpora ni copia commits ajenos.
 
-La prueba manual de finalización no concluyó porque Docker Desktop se cerró. El log
-mostró `ECONNREFUSED` de MariaDB, no un rechazo del contrato HTTP.
+Con Docker Desktop activo se verificó por HTTP que la imagen 9 pasó de `in_progress`
+a `completed`, que el cambio permaneció en MariaDB, que el filtro por estado devolvió
+esa imagen y que el dashboard reflejó 1 imagen completada y 11 % de avance. También
+se comprobó una búsqueda `car OR person`, que devolvió el registro esperado.

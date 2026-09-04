@@ -109,12 +109,12 @@ implementa en Fase 1.
 
 ### 2.4 Dashboard — `/dashboard`
 
-**Propósito:** reservar la estructura visual para las métricas que Rol 2 agregará en
-Fase 2.
+**Propósito:** presentar las métricas agregadas por el backend para conocer el avance
+real del dataset.
 
-**Contenido inicial:** progreso general, distribución por estado y objetos por clase.
-Todos los números visibles en Fase 0 llevan la etiqueta `Datos simulados` para no
-confundirlos con métricas provenientes de la base de datos.
+**Contenido:** progreso general, distribución por estado y objetos por clase. Los datos
+provienen de `GET /api/dashboard/metrics`; la pantalla ofrece carga, estado vacío,
+error y reintento.
 
 ## 3. Estados de interfaz acordados
 
@@ -152,5 +152,5 @@ simulado.
 **Pendiente de Fase 1:** carga binaria real, lectura desde API, persistencia de cajas,
 estados de carga/error conectados y prueba de recarga.
 
-**Pendiente de Fase 2:** zoom, deshacer completo, guardar y siguiente real, métricas,
-búsqueda, filtros y gráficas con datos de la base.
+**Terminado en Fase 2:** zoom, deshacer persistente, finalizar y siguiente real,
+métricas, búsqueda booleana y filtros de servidor con datos de la base.

@@ -116,6 +116,13 @@ búsqueda/filtros de servidor y dashboard con métricas reales. Consulta
 [`docs/frontend-phase-2-status.md`](docs/frontend-phase-2-status.md) para conocer la
 verificación integrada con MariaDB y los endpoints del Rol 2.
 
+### Cierre de Fase 3 — Rol 3
+
+La revisión final del frontend eliminó el prototipo simulado que ya no estaba montado,
+retiró su dependencia Zustand y reforzó el `.gitignore` contra binarios de imagen.
+Consulta [`docs/frontend-phase-3-status.md`](docs/frontend-phase-3-status.md) para ver
+la evidencia de calidad y la verificación final integrada de la entrega del equipo.
+
 ## Estructura del proyecto
 
 ```
